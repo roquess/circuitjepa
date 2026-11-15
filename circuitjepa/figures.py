@@ -53,7 +53,7 @@ def _backend_label(be: str, data: dict) -> str:
     if be == "exact":
         return f"exact (m={data.get('m')})"
     if be == "qpu":
-        return f"QPU {data.get('backend_name', '')} (m={data.get('m')}, {data.get('shots')} shots)"
+        return f"QPU {data.get('backend_name', '')} (m={data.get('m')}, {ex.shots_label(data.get('shots'))} shots)"
     return f"{be} (m={data.get('m')}, {data.get('shots')} shots)"
 
 
@@ -80,37 +80,56 @@ def loss_curves(runs: dict) -> Path:
     return path
 
 
+# Exploratory QPU runs (not seed 0), shown in an extra row of the similarity figure.
+QPU_EXTRA = ("full_seed1", "full_seed2", "no_predictor_seed0", "untrained_seed1")
+
+
+def _sim_rows(evals: dict) -> list[tuple[str, list[str | None], str]]:
+    """(backend, run name per column, row label) for each row of the similarity figure."""
+    rows = []
+    for be in ex._sort_backends(evals):
+        rows.append((be, [f"{v}_seed0" for v in ex.VARIANTS], _backend_label(be, evals[be])))
+    if "qpu" in evals and any(n in evals["qpu"]["runs"] for n in QPU_EXTRA):
+        shots = evals["qpu"].get("shots", {})
+        names = [n if n in evals["qpu"]["runs"] else None for n in QPU_EXTRA]
+        sh = sorted({shots[n] for n in names if n and isinstance(shots, dict)})
+        label = f"QPU exploratory (m={evals['qpu'].get('m')}, {'/'.join(map(str, sh))} shots)"
+        rows.append(("qpu", names, label))
+    return rows
+
+
 def similarity_matrices(evals: dict) -> Path:
-    bes = ex._sort_backends(evals)
+    rows_spec = _sim_rows(evals)
     fig, axes = plt.subplots(
-        len(bes), len(ex.VARIANTS), figsize=(3.0 * len(ex.VARIANTS), 3.0 * len(bes) + 0.4),
+        len(rows_spec), len(ex.VARIANTS), figsize=(3.0 * len(ex.VARIANTS), 3.0 * len(rows_spec) + 0.4),
         squeeze=False,
     )
     fig.subplots_adjust(top=1 - 0.9 / fig.get_figheight(), hspace=0.45, wspace=0.15)
     im = None
-    for i, be in enumerate(bes):
-        for j, var in enumerate(ex.VARIANTS):
+    for i, (be, names, row_label) in enumerate(rows_spec):
+        for j in range(len(ex.VARIANTS)):
             ax = axes[i, j]
             ax.grid(False)
-            rec = evals[be]["runs"].get(f"{var}_seed0")
+            name = names[j]
+            rec = evals[be]["runs"].get(name) if name else None
             if rec is None:
                 ax.axis("off")
                 continue
+            var, seed = name.rsplit("_seed", 1)
             G = np.asarray(rec["G"])
             im = ax.imshow(G, cmap="RdBu_r", vmin=-1, vmax=1, interpolation="nearest")
-            ax.set_title(f"{LABELS[var]}\ntop-1 {rec['top1']:.2f}, gap {rec['diag_gap']:.2f}",
-                         fontsize=9)
+            ax.set_title(f"{LABELS[var]}" + (f" (seed {seed})" if seed != "0" else "")
+                         + f"\ntop-1 {rec['top1']:.2f}, gap {rec['diag_gap']:.2f}", fontsize=9)
             ax.set_xticks([])
             ax.set_yticks([])
             if j == 0:
-                ax.set_ylabel(_backend_label(be, evals[be]).replace(" (", "\n(", 1) + "\nprediction i",
-                              fontsize=8)
-            if i == len(bes) - 1:
+                ax.set_ylabel(row_label.replace(" (", "\n(", 1) + "\nprediction i", fontsize=8)
+            if i == len(rows_spec) - 1:
                 ax.set_xlabel("target j", fontsize=9)
     if im is not None:
         cb = fig.colorbar(im, ax=axes, shrink=0.8, pad=0.02)
         cb.set_label("G[i, j] = cos(r_pred,i , s_target,j)")
-    fig.suptitle("Similarity matrices, seed 0 (diagonal = matching pairs)")
+    fig.suptitle("Similarity matrices, seed 0 unless noted (diagonal = matching pairs)")
     path = _fig_dir() / "similarity_matrices.png"
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
@@ -151,8 +170,12 @@ def ablation(summary: dict, evals: dict) -> Path:
     return path
 
 
+PROBE_YMAX = 0.2
+
+
 def dynamics_probe(summary: dict, evals: dict) -> Path:
     bes = ex._sort_backends(summary["backends"])
+    off_scale: list[str] = []
     fig, axes = plt.subplots(1, len(bes), figsize=(4.4 * len(bes), 4.0), squeeze=False, sharey=True)
     for ax, be in zip(axes[0], bes):
         rows = summary["backends"][be]
@@ -167,6 +190,17 @@ def dynamics_probe(summary: dict, evals: dict) -> Path:
                 sd = [r[f"probe_mse_{kind}_by_s[{s}]"]["std"] for s in ss]
                 ax.errorbar(np.array(ss) + dx, mu, yerr=sd, color=COLORS[var], ls=ls, marker=mk, ms=6, lw=1.6,
                             capsize=2, label=f"{LABELS[var]} — {'predicted' if kind == 'pred' else 'un-advanced'}")
+        for vi, var in enumerate(ex.VARIANTS):  # mark means above the plotted range
+            if var not in rows:
+                continue
+            for k in rows[var]:
+                if k.startswith("probe_mse_") and "_by_s[" in k and rows[var][k]["mean"] > PROBE_YMAX:
+                    s = int(k.split("[")[1].rstrip("]"))
+                    ax.plot(s + (vi - 1.5) * 0.06, PROBE_YMAX * 0.97, marker="^", ms=7, color=COLORS[var],
+                            ls="none", clip_on=False)
+                    off_scale.append(f"{be}: {LABELS[var]}, s={s}, {k.split('_by_s')[0][10:]} "
+                                     f"{rows[var][k]['mean']:.2f}")
+        ax.set_ylim(0, PROBE_YMAX)
         ax.set_xticks([1, 2, 3])
         ax.set_xlabel("time step s")
         ax.set_title(_backend_label(be, evals[be]), fontsize=9)
@@ -178,7 +212,10 @@ def dynamics_probe(summary: dict, evals: dict) -> Path:
             entries.setdefault(lab, h)
     axes[0, -1].legend(list(entries.values()), list(entries.keys()), fontsize=7,
                        loc="upper left", bbox_to_anchor=(1.0, 1.0))
-    fig.suptitle("Dynamics probe: solid = predicted embedding, dashed = un-advanced context")
+    title = "Dynamics probe: solid = predicted embedding, dashed = un-advanced context"
+    if off_scale:
+        title += f"\n▲ = mean above {PROBE_YMAX} (off scale; see results/SUMMARY.md)"
+    fig.suptitle(title)
     fig.tight_layout()
     path = _fig_dir() / "dynamics_probe.png"
     fig.savefig(path, bbox_inches="tight")

@@ -56,14 +56,14 @@
   "num_circuits": null
  },
  "account_usage_after": {
-  "usage_consumed_seconds": 354,
-  "usage_consumed_ru": 5.867546,
+  "usage_consumed_seconds": 584,
+  "usage_consumed_ru": 9.672897,
   "usage_limit_seconds": 600,
   "usage_limit_ru": 10,
-  "usage_remaining_seconds": 246,
+  "usage_remaining_seconds": 16,
   "usage_period": {
-   "start_time": "2026-10-18T10:20:31.947Z",
-   "end_time": "2026-11-15T10:20:31.947Z"
+   "start_time": "2026-10-18T11:19:30.666Z",
+   "end_time": "2026-11-15T11:19:30.666Z"
   }
  },
  "no_ema_seed0": {
@@ -89,6 +89,110 @@
    "created": "2026-11-15T10:16:34.499038Z",
    "finished": "2026-11-15T10:19:15.343369Z",
    "running": "2026-11-15T10:16:36.583569Z"
+  },
+  "qiskit_version": "qiskit_ibm_runtime-0.52.1,qiskit-2.6.2*,qiskit_aer-0.18.2*"
+ },
+ "full_seed1": {
+  "job_id": "dbsp6b8k09pc73b0fb80",
+  "backend": "ibm_marrakesh",
+  "usage": {
+   "qpu_charge_time_seconds": 60,
+   "value": 0.999344,
+   "unit": "resource_units",
+   "status": "complete",
+   "details": [
+    {
+     "value": 0.999344,
+     "unit": "resource_units",
+     "metric": {
+      "id": "caffe3ca-729c-5750-8777-df63bbf8bfd9",
+      "value": 60
+     }
+    }
+   ]
+  },
+  "timestamps": {
+   "created": "2026-11-15T11:10:37.665075Z",
+   "finished": "2026-11-15T11:12:19.224848Z",
+   "running": "2026-11-15T11:10:39.656409Z"
+  },
+  "qiskit_version": "qiskit_ibm_runtime-0.52.1,qiskit-2.6.2*,qiskit_aer-0.18.2*"
+ },
+ "full_seed2": {
+  "job_id": "dbsp6bok09pc73b0fb90",
+  "backend": "ibm_marrakesh",
+  "usage": {
+   "qpu_charge_time_seconds": 60,
+   "value": 0.999159,
+   "unit": "resource_units",
+   "status": "complete",
+   "details": [
+    {
+     "value": 0.999159,
+     "unit": "resource_units",
+     "metric": {
+      "id": "caffe3ca-729c-5750-8777-df63bbf8bfd9",
+      "value": 60
+     }
+    }
+   ]
+  },
+  "timestamps": {
+   "created": "2026-11-15T11:10:39.827666Z",
+   "finished": "2026-11-15T11:13:17.971767Z",
+   "running": "2026-11-15T11:10:41.022361Z"
+  },
+  "qiskit_version": "qiskit_ibm_runtime-0.52.1,qiskit-2.6.2*,qiskit_aer-0.18.2*"
+ },
+ "no_predictor_seed0": {
+  "job_id": "dbsp8e7v5hds73dj8png",
+  "backend": "ibm_marrakesh",
+  "usage": {
+   "qpu_charge_time_seconds": 55,
+   "value": 0.903216,
+   "unit": "resource_units",
+   "status": "complete",
+   "details": [
+    {
+     "value": 0.903216,
+     "unit": "resource_units",
+     "metric": {
+      "id": "caffe3ca-729c-5750-8777-df63bbf8bfd9",
+      "value": 55
+     }
+    }
+   ]
+  },
+  "timestamps": {
+   "created": "2026-11-15T11:15:04.476768Z",
+   "finished": "2026-11-15T11:16:38.33574Z",
+   "running": "2026-11-15T11:15:06.249029Z"
+  },
+  "qiskit_version": "qiskit_ibm_runtime-0.52.1,qiskit-2.6.2*,qiskit_aer-0.18.2*"
+ },
+ "untrained_seed1": {
+  "job_id": "dbsp8emjjaos73akfiog",
+  "backend": "ibm_marrakesh",
+  "usage": {
+   "qpu_charge_time_seconds": 55,
+   "value": 0.903632,
+   "unit": "resource_units",
+   "status": "complete",
+   "details": [
+    {
+     "value": 0.903632,
+     "unit": "resource_units",
+     "metric": {
+      "id": "caffe3ca-729c-5750-8777-df63bbf8bfd9",
+      "value": 55
+     }
+    }
+   ]
+  },
+  "timestamps": {
+   "created": "2026-11-15T11:15:06.399424Z",
+   "finished": "2026-11-15T11:17:31.471831Z",
+   "running": "2026-11-15T11:15:08.262808Z"
   },
   "qiskit_version": "qiskit_ibm_runtime-0.52.1,qiskit-2.6.2*,qiskit_aer-0.18.2*"
  }

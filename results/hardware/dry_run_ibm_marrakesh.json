@@ -1,12 +1,13 @@
 {
  "backend": "ibm_marrakesh",
- "date": "2026-11-15T10:16:16+00:00",
+ "date": "2026-11-15T11:10:17+00:00",
  "runs": [
-  "no_ema_seed0"
+  "full_seed1",
+  "full_seed2"
  ],
  "m": 16,
- "shots": 1000,
- "n_circuits": 432,
+ "shots": 500,
+ "n_circuits": 864,
  "estimated_qpu_seconds": 108.0,
  "circuit_stats": {}
 }

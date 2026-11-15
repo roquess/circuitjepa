@@ -1,0 +1,165 @@
+{
+ "backend": "ibm_marrakesh",
+ "date": "2026-11-15T11:10:35+00:00",
+ "runs": [
+  "full_seed1",
+  "full_seed2"
+ ],
+ "m": 16,
+ "shots": 500,
+ "n_circuits": 864,
+ "estimated_qpu_seconds": 108.0,
+ "circuit_stats": {
+  "full_seed1": {
+   "context": {
+    "n_circuits": 144,
+    "depth_mean": 61.18055555555556,
+    "depth_max": 82,
+    "twoq_mean": 21.40277777777778,
+    "twoq_max": 27,
+    "first_layout": {
+     "initial": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ],
+     "final": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ]
+    }
+   },
+   "target": {
+    "n_circuits": 144,
+    "depth_mean": 76.72916666666667,
+    "depth_max": 108,
+    "twoq_mean": 27.0,
+    "twoq_max": 36,
+    "first_layout": {
+     "initial": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ],
+     "final": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ]
+    }
+   },
+   "unadvanced": {
+    "n_circuits": 144,
+    "depth_mean": 46.791666666666664,
+    "depth_max": 66,
+    "twoq_mean": 18.75,
+    "twoq_max": 24,
+    "first_layout": {
+     "initial": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ],
+     "final": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ]
+    }
+   }
+  },
+  "full_seed2": {
+   "context": {
+    "n_circuits": 144,
+    "depth_mean": 57.979166666666664,
+    "depth_max": 77,
+    "twoq_mean": 20.71527777777778,
+    "twoq_max": 26,
+    "first_layout": {
+     "initial": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ],
+     "final": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ]
+    }
+   },
+   "target": {
+    "n_circuits": 144,
+    "depth_mean": 75.72916666666667,
+    "depth_max": 107,
+    "twoq_mean": 27.0,
+    "twoq_max": 36,
+    "first_layout": {
+     "initial": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ],
+     "final": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ]
+    }
+   },
+   "unadvanced": {
+    "n_circuits": 144,
+    "depth_mean": 46.791666666666664,
+    "depth_max": 66,
+    "twoq_mean": 18.75,
+    "twoq_max": 24,
+    "first_layout": {
+     "initial": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ],
+     "final": [
+      55,
+      54,
+      53,
+      39,
+      33
+     ]
+    }
+   }
+  }
+ },
+ "submission_id": "ibm_marrakesh_20261115T111035+0000_639c1344",
+ "params_hash": {
+  "full_seed1": "19571ecaecadc123dd2ca6a318af249d6f11ef35db2f89d4169fe31fbbd88c8f",
+  "full_seed2": "e792e2e060b4a6065a9baaca41cc8a3239b20ba281cf86c9732029b939fbeef2"
+ },
+ "job_ids": {
+  "full_seed1": "dbsp6b8k09pc73b0fb80",
+  "full_seed2": "dbsp6bok09pc73b0fb90"
+ }
+}

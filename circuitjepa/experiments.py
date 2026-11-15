@@ -399,6 +399,14 @@ def _pm(cell: dict, fmt: str = "{:.3f}") -> str:
     return f"{fmt.format(cell['mean'])} ± {fmt.format(cell['std'])}"
 
 
+def shots_label(shots) -> str:
+    """Shots as text; a per-run dict (QPU submissions differ) becomes e.g. '450–1000 per run'."""
+    if isinstance(shots, dict):
+        vals = sorted(set(shots.values()))
+        return f"{vals[0]}" if len(vals) == 1 else f"{vals[0]}–{vals[-1]}"
+    return f"{shots}"
+
+
 def summary_markdown(summary: dict) -> str:
     lines = [
         "# CircuitJEPA results summary",
@@ -412,7 +420,8 @@ def summary_markdown(summary: dict) -> str:
     for be in _sort_backends(summary["backends"]):
         rows = summary["backends"][be]
         meta = rows.get("_meta", {})
-        desc = f"m = {meta.get('m')}" + (f", shots = {meta['shots']}" if meta.get("shots") else "")
+        desc = f"m = {meta.get('m')}" + (f", shots = {shots_label(meta['shots'])}" + (" (per run)" if isinstance(meta["shots"], dict) else "")
+                                             if meta.get("shots") else "")
         lines += [f"## Backend: {be} ({desc})", ""]
         lines += [
             "| variant | top-1 | diag gap | total var | mean ‖r‖ | collapsed | probe pred | probe unadv | ‖P−I‖ |",
@@ -447,8 +456,9 @@ def summary_markdown(summary: dict) -> str:
         if tests:
             lines += [
                 "",
-                f"Pre-registered tests (full vs untrained; gap: paired sign-flip, p < {ALPHA_GAP}; "
-                f"top-1: binomial vs chance 1/m, p < {ALPHA_TOP1}). Seed 0 is the registered pair.",
+                f"Tests (full vs untrained; gap: paired sign-flip, p < {ALPHA_GAP}; "
+                f"top-1: binomial vs chance 1/m, p < {ALPHA_TOP1}). Only the seed-0 pair is pre-registered; "
+                "the others are exploratory.",
                 "",
                 "| pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |",
                 "|---|---|---|---|---|---|---|",
