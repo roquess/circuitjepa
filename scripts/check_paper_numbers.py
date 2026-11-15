@@ -209,7 +209,7 @@ add("`untrained` gives 0.021 ± 0.036", f"`untrained` gives {same.pop() if len(s
 k = {round(R(be, "full_seed0", "top1") * 16) for be in ("aer", "fake_fez", "fake_marrakesh")}
 add("for seed 0 the top-1 is 15/16 on all three", f"for seed 0 the top-1 is {k.pop() if len(k) == 1 else '?'}/16 on all three", "eval/*.json full_seed0.top1")
 k = {round(R(be, "no_ema_seed0", "top1") * 16) for be in ("aer", "fake_fez", "fake_marrakesh")}
-add("(also 7/16 on all three shot-based simulators)", f"(also {k.pop() if len(k) == 1 else '?'}/16 on all three shot-based simulators)", "eval/*.json no_ema_seed0.top1")
+add("(7/16), as on all three shot-based simulators", f"({k.pop() if len(k) == 1 else '?'}/16), as on all three shot-based simulators", "eval/*.json no_ema_seed0.top1")
 
 # ---------------------------------------------------------------- Table 3 (QPU)
 for be, run, label in (("aer", "full_seed0", "full, aer"), ("fake_marrakesh", "full_seed0", "full, fake_marrakesh"),
@@ -315,7 +315,7 @@ ct = lambda c: int(subprocess.run(["git", "show", "-s", "--format=%ct", c], cwd=
 assert anc == 0 and ct("41d5c8b") < ct("29060b3"), "pre-registration commit is not before the first results commit"
 # 'short circuits': mean two-qubit counts across branches of the full model
 tq = [cs[b]["twoq_mean"] for b in ("context", "target", "unadvanced")]
-add("on average 19–27 CZ gates", f"on average {round(min(tq))}–{round(max(tq))} CZ gates", "circuit_stats.full_seed0.*.twoq_mean")
+add("on average 19–27 CZ gates after transpilation for `ibm_marrakesh`", f"on average {round(min(tq))}–{round(max(tq))} CZ gates after transpilation for `{SUB1['backend']}`", "circuit_stats.full_seed0.*.twoq_mean")
 add("`no_predictor` seed 0 is also non-retrieving (0/64) with a gap of 0.068",
     f"`no_predictor` seed 0 is also non-retrieving ({round(R('exact','no_predictor_seed0','top1')*64)}/64) with a gap of {f(R('exact','no_predictor_seed0','diag_gap'))}",
     "eval/exact.json no_predictor_seed0")

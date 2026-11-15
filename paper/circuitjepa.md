@@ -23,7 +23,7 @@ header-includes:
 
 A Joint-Embedding Predictive Architecture (JEPA) learns representations by predicting the *embedding* of a target from the embedding of a context [@lecun2022path]. It never reconstructs the input and needs no negative pairs. Collapse is avoided by asymmetry: a predictor on the context branch and a target encoder that is an exponential moving average (EMA) of the context encoder and receives no gradient [@grill2020byol; @assran2023ijepa]. With an action-conditioned predictor, a JEPA becomes a latent world model [@lecun2022path; @assran2025vjepa2].
 
-This paper asks a narrow feasibility question. Can this principle be implemented with parametrized quantum circuits throughout, on data that are themselves quantum states? And do the trained circuits keep their behaviour on a superconducting quantum processor? With quantum-native data, the encoder acts on the state produced by the physical process, with no classical data loading.
+This paper asks a narrow feasibility question. Can this principle be implemented with parametrized quantum circuits throughout, on data that are themselves quantum states? And do the trained circuits keep their behaviour on a superconducting quantum processor? With quantum-native data, the encoder acts directly on the state produced by the (here, circuit-simulated) physical process, with no classical data loading.
 
 The contribution is an implementation and a measured evaluation, not a performance result: (i) a JEPA whose encoder, EMA target encoder and action-conditioned predictor are all circuits, trained on spin-chain dynamics; (ii) ablations without EMA and stop-gradient, without predictor, and an untrained baseline, with collapse diagnostics and a dynamics probe; (iii) an evaluation of the same parameters on noiseless, noisy-simulated and real hardware, with a criterion fixed beforehand. All results are reported as measured, including those that did not go as expected.
 
@@ -74,7 +74,7 @@ The contribution is an implementation and a measured evaluation, not a performan
 
 ![Ablations by backend (mean ± std over seeds; one seed and no `no_predictor` run on the QPU). Dashed lines: chance $1/m$.](figures/ablation.png){width=100%}
 
-**Seed variance is large.** The `full` exact top-1 is 59/64 (0.922) for seed 0, 21/64 (0.328) for seed 1 and 10/64 (0.156) for seed 2, so one seed dominates the mean; the diagonal gaps are 0.872, 0.536 and 0.486 and the final training losses 0.117, 0.442 and 0.466 (Figure 2). Each seed passes the same tests against its untrained baseline (sign-flip p = 1.0 × 10^-4^ for each; binomial p = 1.9 × 10^-100^, 2.5 × 10^-22^ and 6.1 × 10^-8^). `no_ema` is as dispersed: 20/64, 48/64 and 7/64.
+**Seed variance is large.** The `full` exact top-1 is 59/64 (0.922) for seed 0, 21/64 (0.328) for seed 1 and 10/64 (0.156) for seed 2, so one seed dominates the mean; the diagonal gaps are 0.872, 0.536 and 0.486 and the final training losses 0.117, 0.442 and 0.466 (Figure 2). In exact simulation, each seed passes the tests of the pre-registered criterion (Section 4) against its untrained baseline (sign-flip p = 1.0 × 10^-4^ for each; binomial p = 1.9 × 10^-100^, 2.5 × 10^-22^ and 6.1 × 10^-8^). `no_ema` is as dispersed: 20/64, 48/64 and 7/64.
 
 ![Training loss (mean ± std over seeds). A similar loss does not imply similar retrieval.](figures/loss_curves.png){width=55%}
 
@@ -88,7 +88,7 @@ The contribution is an implementation and a measured evaluation, not a performan
 
 ![Dynamics probe by time step: predicted (solid) vs un-advanced (dashed) embedding. For `no_predictor` the two coincide.](figures/dynamics_probe.png){width=100%}
 
-For `full` in exact simulation, the probe MSE is lower from the predicted embedding than from the un-advanced one (0.0498 ± 0.0082 against 0.0830 ± 0.0289), at every $s$ (0.0425, 0.0470, 0.0582 against 0.0614, 0.0992, 0.0838; Figure 3), for seeds 0 and 1 (0.0414 against 0.0936, and 0.0579 against 0.1052) but not seed 2 (0.0500 against 0.0504). However, **the probe does not separate `full` from `no_predictor`**: the latter, with near-chance retrieval, has a probe MSE of 0.0474 ± 0.0012, lower than `full`. The probe is therefore at most weak evidence that the predictor advances the embedding in time. $\lVert P - I \rVert$ of 0.453 ± 0.330 shows that the learned predictor is not the identity.
+For `full` in exact simulation, the probe MSE is lower from the predicted embedding than from the un-advanced one (0.0498 ± 0.0082 against 0.0830 ± 0.0289), at every $s$ (0.0425, 0.0470, 0.0582 against 0.0614, 0.0992, 0.0838; Figure 3), for seeds 0 and 1 (0.0414 against 0.0936, and 0.0579 against 0.1052) but not seed 2 (0.0500 against 0.0504). However, **the probe does not separate `full` from `no_predictor`**: the latter, with near-chance retrieval, has a probe MSE of 0.0474 ± 0.0012, lower than `full`. The probe is therefore at most weak evidence that the predictor advances the embedding in time. $\lVert P - I \rVert$ of 0.453 ± 0.330 shows that the learned predictor is not the identity. Retrieval itself may partly rely on conserved quantities (Section 6).
 
 On shot-based backends, the `no_predictor` predicted and un-advanced circuits are identical, so their probe-MSE differences are pure sampling noise; they reach 0.0519 on aer, 0.0905 on fake_fez and 0.0742 on fake_marrakesh. Differences of `full` are of that size or smaller (for example 0.0475 on aer for seed 0), so I do not treat probe differences on shot-based backends, the QPU included, as significant.
 
@@ -102,7 +102,7 @@ On shot-based backends, the `no_predictor` predicted and un-advanced circuits ar
 
 : `full` on the shot-based simulators ($m = 16$, chance 1/16), mean ± std over seeds.
 
-Device noise changes top-1 and gap by less than the seed spread (for seed 0 the top-1 is 15/16 on all three), while it shrinks the total variance and mean norm. The top-1 of the other variants is also unchanged: `no_ema` gives 0.521 ± 0.321 on all three, and `untrained` gives 0.021 ± 0.036. A likely but undemonstrated explanation: the circuits are short (on average 19–27 CZ gates) and the cosine is purity-invariant, so a uniform contraction of the Bloch vectors changes $\lVert r \rVert$ but not $G$.
+Device noise changes top-1 and gap by less than the seed spread (for seed 0 the top-1 is 15/16 on all three), while it shrinks the total variance and mean norm. The top-1 of the other variants is also unchanged: `no_ema` gives 0.521 ± 0.321 on all three, and `untrained` gives 0.021 ± 0.036. A likely but undemonstrated explanation: the circuits are short (on average 19–27 CZ gates after transpilation for `ibm_marrakesh`, Section 5.4) and the cosine is purity-invariant, so a uniform contraction of the Bloch vectors changes $\lVert r \rVert$ but not $G$.
 
 ## QPU evaluation
 
@@ -120,7 +120,7 @@ Device noise changes top-1 and gap by less than the seed spread (for seed 0 the 
 
 : Seed-0 models on the QPU, with `full` on two simulators for comparison ($m = 16$, chance 1/16).
 
-**Pre-registered criterion: met.** The `full` seed-0 model retrieves 15 of 16 targets on the QPU, as on the simulators, against 1 of 16 for the untrained baseline. The diagonal-gap test gives p = 1.0 × 10^-4^ (the floor, below 0.01) and the binomial top-1 test gives p = 1.3 × 10^-17^ (below 0.05). By time step, top-1 is 1.000, 1.000 and 0.833 (5, 5 and 6 samples). `no_ema` gives 0.438 top-1 (7/16) (also 7/16 on all three shot-based simulators). Seed 0 is the best of the three seeds, so these numbers are not representative of the seed average (Table 2). Relative to aer, the QPU leaves top-1 unchanged and lowers the gap from 0.847 to 0.827, the total variance from 1.823 to 1.218 and the mean norm from 1.441 to 1.241, as with simulated noise.
+**Pre-registered criterion: met.** The `full` seed-0 model retrieves 15 of 16 targets on the QPU, as on the simulators, against 1 of 16 for the untrained baseline. The diagonal-gap test gives p = 1.0 × 10^-4^ (the floor, below 0.01) and the binomial top-1 test gives p = 1.3 × 10^-17^ (below 0.05). By time step, top-1 is 1.000, 1.000 and 0.833 (5, 5 and 6 samples). `no_ema` gives 0.438 top-1 (7/16), as on all three shot-based simulators. Seed 0 is the best of the three seeds, so these numbers are not representative of the seed average (Table 2). Relative to aer, the QPU leaves top-1 unchanged and lowers the gap from 0.847 to 0.827, the total variance from 1.823 to 1.218 and the mean norm from 1.441 to 1.241, as with simulated noise.
 
 ![Similarity matrices $G$ of the seed-0 models on every backend; the diagonal holds the matching pairs.](figures/similarity_matrices.png){width=62%}
 
