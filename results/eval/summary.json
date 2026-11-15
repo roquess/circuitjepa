@@ -1538,7 +1538,94 @@
     "seeds": [
      0
     ],
-    "wall_seconds_total": 0.2953933999524452
+    "wall_seconds_total": 0.2523129000328481
+   },
+   "no_ema": {
+    "top1": {
+     "mean": 0.4375,
+     "std": 0.0,
+     "n": 1
+    },
+    "diag_gap": {
+     "mean": 0.4547522714378431,
+     "std": 0.0,
+     "n": 1
+    },
+    "total_var": {
+     "mean": 1.2462475034722222,
+     "std": 0.0,
+     "n": 1
+    },
+    "mean_norm": {
+     "mean": 1.160294403977881,
+     "std": 0.0,
+     "n": 1
+    },
+    "probe_mse_pred": {
+     "mean": 0.04106808907502826,
+     "std": 0.0,
+     "n": 1
+    },
+    "probe_mse_unadv": {
+     "mean": 0.0408695736434222,
+     "std": 0.0,
+     "n": 1
+    },
+    "predictor_distance": {
+     "mean": 0.6109160806247171,
+     "std": 0.0,
+     "n": 1
+    },
+    "top1_by_s[1]": {
+     "mean": 0.2,
+     "std": 0.0,
+     "n": 1
+    },
+    "top1_by_s[2]": {
+     "mean": 0.4,
+     "std": 0.0,
+     "n": 1
+    },
+    "top1_by_s[3]": {
+     "mean": 0.6666666666666666,
+     "std": 0.0,
+     "n": 1
+    },
+    "probe_mse_pred_by_s[1]": {
+     "mean": 0.028887825655073324,
+     "std": 0.0,
+     "n": 1
+    },
+    "probe_mse_pred_by_s[2]": {
+     "mean": 0.030271807452556837,
+     "std": 0.0,
+     "n": 1
+    },
+    "probe_mse_pred_by_s[3]": {
+     "mean": 0.0602152099437169,
+     "std": 0.0,
+     "n": 1
+    },
+    "probe_mse_unadv_by_s[1]": {
+     "mean": 0.018613472586667557,
+     "std": 0.0,
+     "n": 1
+    },
+    "probe_mse_unadv_by_s[2]": {
+     "mean": 0.03402786509643764,
+     "std": 0.0,
+     "n": 1
+    },
+    "probe_mse_unadv_by_s[3]": {
+     "mean": 0.06511774831320487,
+     "std": 0.0,
+     "n": 1
+    },
+    "collapsed_count": 0,
+    "seeds": [
+     0
+    ],
+    "wall_seconds_total": 0.2867969999788329
    },
    "untrained": {
     "top1": {
@@ -1625,12 +1712,12 @@
     "seeds": [
      0
     ],
-    "wall_seconds_total": 0.25221550004789606
+    "wall_seconds_total": 0.2512857000110671
    },
    "_meta": {
     "m": 16,
     "shots": 1000,
-    "date": "2026-11-15T10:13:05+00:00"
+    "date": "2026-11-15T10:20:53+00:00"
    }
   }
  },
