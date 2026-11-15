@@ -141,8 +141,8 @@ add("seeds 7 and 9 retrieve 1 of 64 with gaps of 0.062 and 0.053 and target vari
 assert hits("exact", "no_ema_seed9", 64) == 1
 nef = sum(1 for s in SEEDS if R("exact", f"no_ema_seed{s}", "diag_gap") < 0.07)
 add("2 of 10 `no_ema` seeds ended", f"{nef} of 10 `no_ema` seeds ended", "eval/exact.json no_ema gap < 0.07")
-add("2 of 10 seeds end with near-zero retrieval (1/64), not flagged by the formal collapse criterion",
-    f"{nef} of 10 seeds end with near-zero retrieval ({max(hits('exact', f'no_ema_seed{s}', 64) for s in (7, 9))}/64), not flagged by the formal collapse criterion"
+add("2 of 10 seeds end with near-zero retrieval (1/64 on the original test set), not flagged by the formal collapse criterion",
+    f"{nef} of 10 seeds end with near-zero retrieval ({max(hits('exact', f'no_ema_seed{s}', 64) for s in (7, 9))}/64 on the original test set), not flagged by the formal collapse criterion"
     if all(hits('exact', f'no_ema_seed{s}', 64) == 1 and R('exact', f'no_ema_seed{s}', 'collapsed') is False for s in (7, 9)) else "?",
     "eval/exact.json no_ema_seed7/9 (abstract)")
 

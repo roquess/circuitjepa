@@ -137,7 +137,7 @@ def similarity_matrices(evals: dict) -> Path:
             if i == len(rows_spec) - 1:
                 ax.set_xlabel("target j", fontsize=16)
     if im is not None:
-        cb = fig.colorbar(im, ax=axes, shrink=0.8, pad=0.02)
+        cb = fig.colorbar(im, ax=axes, shrink=0.8, pad=0.06)
         cb.set_label("G[i, j] = cos(r_pred,i , s_target,j)", fontsize=17)
         cb.ax.tick_params(labelsize=15)
     fig.suptitle("Similarity matrices, seed 0 unless noted (diagonal = matching pairs)", fontsize=20)

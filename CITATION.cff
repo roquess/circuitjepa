@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use this software or its results, please cite it as below."
+title: "CircuitJEPA: a fully circuit-based Joint-Embedding Predictive Architecture for quantum dynamics"
+type: software
+authors:
+  - family-names: Roques
+    given-names: Steve
+version: 1.0.0
+date-released: 2026-11-15
+license: Apache-2.0
+repository-code: "https://github.com/roquess/circuitjepa"
+keywords:
+  - quantum machine learning
+  - joint-embedding predictive architecture
+  - self-supervised learning
+  - parametrized quantum circuits
+  - IBM Quantum

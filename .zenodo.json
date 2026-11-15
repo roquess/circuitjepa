@@ -1,0 +1,31 @@
+{
+  "title": "CircuitJEPA: a fully circuit-based Joint-Embedding Predictive Architecture for quantum dynamics",
+  "upload_type": "software",
+  "description": "<p>CircuitJEPA is a Joint-Embedding Predictive Architecture (JEPA) whose three parametrized components (encoder, exponential-moving-average target encoder and horizon-conditioned predictor) are parametrized quantum circuits. Training is done in exact simulation with classical optimization on states of a 3-qubit transverse-field Ising chain; the trained circuits are evaluated on shot-based simulators and on the IBM Heron QPU ibm_marrakesh, where a pre-registered retrieval criterion was met for the designated seed.</p><p>This record archives the code, all results (training runs, simulator and QPU evaluations with raw counts, figures) and the paper (paper/circuitjepa.pdf). It is a feasibility study on 5 qubits, with no claim of quantum advantage or scalability.</p>",
+  "creators": [
+    {
+      "name": "Roques, Steve"
+    }
+  ],
+  "license": "Apache-2.0",
+  "keywords": [
+    "quantum machine learning",
+    "joint-embedding predictive architecture",
+    "JEPA",
+    "self-supervised learning",
+    "parametrized quantum circuits",
+    "variational quantum circuits",
+    "transverse-field Ising model",
+    "IBM Quantum",
+    "Qiskit"
+  ],
+  "access_right": "open",
+  "language": "eng",
+  "related_identifiers": [
+    {
+      "identifier": "https://github.com/roquess/circuitjepa",
+      "relation": "isSupplementTo",
+      "scheme": "url"
+    }
+  ]
+}
