@@ -1,0 +1,156 @@
+{
+ "backend": "fake_fez",
+ "date": "2026-11-15T09:34:03+00:00",
+ "runs": [
+  "full_seed0",
+  "untrained_seed0"
+ ],
+ "m": 16,
+ "shots": 1000,
+ "n_circuits": 864,
+ "estimated_qpu_seconds": 216.0,
+ "circuit_stats": {
+  "full_seed0": {
+   "context": {
+    "n_circuits": 144,
+    "depth_mean": 64.59722222222223,
+    "depth_max": 88,
+    "twoq_mean": 21.40277777777778,
+    "twoq_max": 27,
+    "first_layout": {
+     "initial": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ],
+     "final": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ]
+    }
+   },
+   "target": {
+    "n_circuits": 144,
+    "depth_mean": 78.91666666666667,
+    "depth_max": 111,
+    "twoq_mean": 27.0,
+    "twoq_max": 36,
+    "first_layout": {
+     "initial": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ],
+     "final": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ]
+    }
+   },
+   "unadvanced": {
+    "n_circuits": 144,
+    "depth_mean": 50.083333333333336,
+    "depth_max": 71,
+    "twoq_mean": 18.75,
+    "twoq_max": 24,
+    "first_layout": {
+     "initial": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ],
+     "final": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ]
+    }
+   }
+  },
+  "untrained_seed0": {
+   "context": {
+    "n_circuits": 144,
+    "depth_mean": 64.32638888888889,
+    "depth_max": 88,
+    "twoq_mean": 21.40277777777778,
+    "twoq_max": 27,
+    "first_layout": {
+     "initial": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ],
+     "final": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ]
+    }
+   },
+   "target": {
+    "n_circuits": 144,
+    "depth_mean": 80.91666666666667,
+    "depth_max": 113,
+    "twoq_mean": 27.0,
+    "twoq_max": 36,
+    "first_layout": {
+     "initial": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ],
+     "final": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ]
+    }
+   },
+   "unadvanced": {
+    "n_circuits": 144,
+    "depth_mean": 49.9375,
+    "depth_max": 71,
+    "twoq_mean": 18.75,
+    "twoq_max": 24,
+    "first_layout": {
+     "initial": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ],
+     "final": [
+      136,
+      143,
+      144,
+      145,
+      146
+     ]
+    }
+   }
+  }
+ }
+}
