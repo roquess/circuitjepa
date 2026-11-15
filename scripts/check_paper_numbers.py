@@ -106,9 +106,10 @@ add("average 0.569 ± 0.341, against 0.469 ± 0.402",
     "eval/exact.json full seeds 3-9 vs 0-2")
 T = EVAL["exact"]["tests"]
 assert all(T[f"full_seed{s}_vs_untrained_seed{s}"]["pass_gap"] and T[f"full_seed{s}_vs_untrained_seed{s}"]["pass_top1"] for s in SEEDS)
-add("sign-flip p = 1.0 × 10^-4^ for each",
+assert all(abs(t["signflip_p_gap"] - 1 / 10001) < 1e-15 for t in T.values())  # all at the resampling floor
+add("sign-flip p = 1.0 × 10^-4^, the resampling floor, for each",
     "sign-flip p = " + (sci(T["full_seed0_vs_untrained_seed0"]["signflip_p_gap"])
-                         if len({t["signflip_p_gap"] for t in T.values()}) == 1 else "?") + " for each",
+                         if len({t["signflip_p_gap"] for t in T.values()}) == 1 else "?") + ", the resampling floor, for each",
     "eval/exact.json tests.*.signflip_p_gap")
 bp = {s: T[f"full_seed{s}_vs_untrained_seed{s}"]["top1_binom_p"] for s in SEEDS}
 smax, smin = max(bp, key=bp.get), min(bp, key=bp.get)
@@ -121,9 +122,9 @@ add("top-1 ranges from 0.078 to 0.969", f"top-1 ranges from {f(min(ft))} to {f(m
 add("1/64 ≈ 0.016", f"1/64 ≈ {f(1/64)}", "chance level")
 order = sorted(SEEDS, key=lambda s: -ft[s])
 assert order[0] == 9 and ft[0] == ft[7] and ft[0] < ft[9] and sum(x > ft[0] for x in ft) == 1
-add("it ties for second (seed 9 reaches 62/64)", f"it ties for second (seed {order[0]} reaches {hits('exact', f'full_seed{order[0]}', 64)}/64)",
+add("ties for second (seed 9 reaches 62/64)", f"ties for second (seed {order[0]} reaches {hits('exact', f'full_seed{order[0]}', 64)}/64)",
     "eval/exact.json full top1 ranking")
-add("the best of the three seeds available when the pair was designated", "the best of the three seeds available when the pair was designated"
+add("it turned out to be the best of the three tuning seeds", "it turned out to be the best of the three tuning seeds"
     if max(range(3), key=lambda s_: ft[s_]) == 0 else "?", "eval/exact.json full_seed0-2.top1")
 
 # ---------------------------------------------------------------- ablation prose
@@ -250,9 +251,9 @@ add("the probe's test MSE is 0.0295", f"the probe's test MSE is {f(np.mean((_des
 add("`no_predictor` seed 0 (0.4694)", f"`no_predictor` seed 0 ({f(R('qpu','no_predictor_seed0','probe_mse_pred'),4)})", "eval/qpu.json no_predictor_seed0")
 diff = lambda be, run: abs(R(be, run, "probe_mse_pred") - R(be, run, "probe_mse_unadv"))
 mx = {be: max((diff(be, f"no_predictor_seed{s}"), s) for s in SEEDS if s != worst) for be in ("aer", "fake_fez", "fake_marrakesh")}
-add("Excluding seed 5, they reach 0.1035 on aer, 0.0905 on fake_fez and 0.0742 on fake_marrakesh (seed 5: 5.1599, 3.888 and 4.7669)",
+add("Excluding seed 5, they reach 0.1035 on aer, 0.0905 on fake_fez and 0.0742 on fake_marrakesh (seed 5: 5.160, 3.888 and 4.767)",
     f"Excluding seed {worst}, they reach {f(mx['aer'][0],4)} on aer, {f(mx['fake_fez'][0],4)} on fake_fez and {f(mx['fake_marrakesh'][0],4)} on fake_marrakesh "
-    f"(seed {worst}: {f(diff('aer', f'no_predictor_seed{worst}'),4)}, {diff('fake_fez', f'no_predictor_seed{worst}'):.4g} and {f(diff('fake_marrakesh', f'no_predictor_seed{worst}'),4)})",
+    f"(seed {worst}: {f(diff('aer', f'no_predictor_seed{worst}'))}, {f(diff('fake_fez', f'no_predictor_seed{worst}'))} and {f(diff('fake_marrakesh', f'no_predictor_seed{worst}'))})",
     "eval/{aer,fake_fez,fake_marrakesh}.json no_predictor |pred-unadv|")
 fullmax = max(R(be, f"full_seed{s}", "probe_mse_unadv") - R(be, f"full_seed{s}", "probe_mse_pred") for be in ("aer", "fake_fez", "fake_marrakesh") for s in SEEDS)
 add("The largest pred-versus-unadvanced difference of `full` on these backends is 0.0723", f"The largest pred-versus-unadvanced difference of `full` on these backends is {f(fullmax,4)}",
@@ -293,9 +294,12 @@ add("15 of 16 targets on the QPU, as on the simulators, against 1 of 16",
 QT = EVAL["qpu"]["tests"]["full_seed0_vs_untrained_seed0"]
 assert QT["pre_registered"] and QT["pass_gap"] and QT["pass_top1"] and QT["m"] == 16 and QT["top1_hits"] == 15
 assert [k for k, t in EVAL["qpu"]["tests"].items() if t["pre_registered"]] == ["full_seed0_vs_untrained_seed0"]
+assert not any(t["pre_registered"] for be in ("exact", "aer", "fake_fez", "fake_marrakesh") for t in EVAL[be]["tests"].values())
 add("The diagonal-gap test gives p = 1.0 × 10^-4^", f"The diagonal-gap test gives p = {sci(QT['signflip_p_gap'])}", "eval/qpu.json tests")
 add("the binomial top-1 test gives p = 1.3 × 10^-17^", f"the binomial top-1 test gives p = {sci(QT['top1_binom_p'])}", "eval/qpu.json tests")
-add("(sign-flip p = 1.0 × 10^-4^, binomial p = 1.3 × 10^-17^)", f"(sign-flip p = {sci(QT['signflip_p_gap'])}, binomial p = {sci(QT['top1_binom_p'])})", "eval/qpu.json tests (abstract)")
+add("(sign-flip p = 1.0 × 10^-4^, the floor of 10,000 resamples; binomial p = 1.3 × 10^-17^); in exploratory",
+    f"(sign-flip p = {sci(QT['signflip_p_gap'])}, the floor of 10,000 resamples; binomial p = {sci(QT['top1_binom_p'])}); in exploratory",
+    "eval/qpu.json tests (abstract)")
 add("$1/10{,}001 \\approx 1.0 \\times 10^{-4}$", "$1/10{,}001 \\approx " + f"{1/10001:.1e}".replace("e-04", " \\times 10^{-4}") + "$", "metrics.signflip_p, n_resamples=10000")
 assert abs(QT["signflip_p_gap"] - 1 / 10001) < 1e-15
 q = QR["full_seed0"]["top1_by_s"]
@@ -435,7 +439,8 @@ add("`qiskit-ibm-runtime` 0.52.1", f"`qiskit-ibm-runtime` {pk['qiskit-ibm-runtim
 add("retrieved 15 of 16 targets and met the pre-registered criterion",
     f"retrieved {QT['top1_hits']} of {QT['m']} targets and "
     + ("met" if QT["pass_gap"] and QT["pass_top1"] else "?") + " the pre-registered criterion", "eval/qpu.json tests")
-add("(sign-flip p = 1.0 × 10^-4^, binomial p = 1.3 × 10^-17^); two", f"(sign-flip p = {sci(QT['signflip_p_gap'])}, binomial p = {sci(QT['top1_binom_p'])}); two",
+add("(sign-flip p = 1.0 × 10^-4^, the floor of 10,000 resamples; binomial p = 1.3 × 10^-17^); two",
+    f"(sign-flip p = {sci(QT['signflip_p_gap'])}, the floor of 10,000 resamples; binomial p = {sci(QT['top1_binom_p'])}); two",
     "eval/qpu.json tests (conclusion)")
 
 # ---------------------------------------------------------------- run checks
