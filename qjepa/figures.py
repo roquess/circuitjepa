@@ -69,8 +69,6 @@ def loss_curves(runs: dict) -> Path:
         mu, sd = H.mean(0), H.std(0)
         ax.plot(x, mu, color=COLORS[var], lw=2, label=f"{LABELS[var]} (n={len(hs)} seeds)")
         ax.fill_between(x, mu - sd, mu + sd, color=COLORS[var], alpha=0.18, lw=0)
-        ax.annotate(LABELS[var], (x[-1], mu[-1]), xytext=(4, 0), textcoords="offset points",
-                    color=INK, va="center", fontsize=9)
     ax.set_xlabel("epoch")
     ax.set_ylabel("training loss  1 − mean cos(r_pred, s_target)")
     ax.set_title("Training loss (mean ± std over seeds)")
@@ -99,7 +97,7 @@ def similarity_matrices(evals: dict) -> Path:
                 continue
             G = np.asarray(rec["G"])
             im = ax.imshow(G, cmap="RdBu_r", vmin=-1, vmax=1, interpolation="nearest")
-            ax.set_title(f"{LABELS[var]} — top-1 {rec['top1']:.2f}, gap {rec['diag_gap']:.2f}",
+            ax.set_title(f"{LABELS[var]}\ntop-1 {rec['top1']:.2f}, gap {rec['diag_gap']:.2f}",
                          fontsize=9)
             ax.set_xticks([])
             ax.set_yticks([])
@@ -140,9 +138,10 @@ def ablation(summary: dict, evals: dict) -> Path:
         ax.set_xticks(x, [_backend_label(be, evals[be]).split(" (")[0] for be in bes])
         ax.set_title(title)
         ax.axhline(0, color="#888888", lw=0.8)
-    axes[0].legend(loc="upper right", fontsize=8)
+    handles, labels = axes[0].get_legend_handles_labels()
+    fig.legend(handles, labels, loc="lower center", ncol=len(ex.VARIANTS), bbox_to_anchor=(0.5, -0.02))
     fig.suptitle("Ablation by backend (mean ± std over seeds)")
-    fig.tight_layout()
+    fig.tight_layout(rect=(0, 0.06, 1, 1))
     path = _fig_dir() / "ablation.png"
     fig.savefig(path)
     plt.close(fig)
@@ -154,15 +153,16 @@ def dynamics_probe(summary: dict, evals: dict) -> Path:
     fig, axes = plt.subplots(1, len(bes), figsize=(4.4 * len(bes), 4.0), squeeze=False, sharey=True)
     for ax, be in zip(axes[0], bes):
         rows = summary["backends"][be]
-        for var in ex.VARIANTS:
+        for vi, var in enumerate(ex.VARIANTS):
             if var not in rows:
                 continue
             r = rows[var]
+            dx = (vi - 1.5) * 0.06  # small horizontal offset so error bars do not overlap
             ss = sorted(int(k.split("[")[1].rstrip("]")) for k in r if k.startswith("probe_mse_pred_by_s["))
             for kind, ls, mk in (("pred", "-", "o"), ("unadv", "--", "s")):
                 mu = [r[f"probe_mse_{kind}_by_s[{s}]"]["mean"] for s in ss]
                 sd = [r[f"probe_mse_{kind}_by_s[{s}]"]["std"] for s in ss]
-                ax.errorbar(ss, mu, yerr=sd, color=COLORS[var], ls=ls, marker=mk, ms=6, lw=1.6,
+                ax.errorbar(np.array(ss) + dx, mu, yerr=sd, color=COLORS[var], ls=ls, marker=mk, ms=6, lw=1.6,
                             capsize=2, label=f"{LABELS[var]} — {'predicted' if kind == 'pred' else 'un-advanced'}")
         ax.set_xticks([1, 2, 3])
         ax.set_xlabel("time step s")

@@ -83,12 +83,23 @@ def get_backend(name: str):
         ) from exc
 
 
+# Heron-like native basis used for the ideal Aer simulator: Aer's own (very large)
+# basis makes level-3 synthesis depend on set iteration order, i.e. not reproducible.
+IDEAL_BASIS = ["rz", "sx", "x", "cz"]
+
+
 def _isa(
     circuits: list[QuantumCircuit], backend, seed_transpiler: int | None = 0
 ) -> list[QuantumCircuit]:
-    return generate_preset_pass_manager(
-        optimization_level=3, backend=backend, seed_transpiler=seed_transpiler
-    ).run(circuits)
+    if getattr(backend, "name", "") == "aer_simulator":
+        pm = generate_preset_pass_manager(
+            optimization_level=3, basis_gates=IDEAL_BASIS, seed_transpiler=seed_transpiler
+        )
+    else:
+        pm = generate_preset_pass_manager(
+            optimization_level=3, backend=backend, seed_transpiler=seed_transpiler
+        )
+    return pm.run(circuits)
 
 
 def transpile(circuits: list[QuantumCircuit], backend) -> list[QuantumCircuit]:
@@ -130,10 +141,19 @@ def _counts(result) -> list[dict[str, int]]:
 
 
 def run_counts(
-    circuits: list[QuantumCircuit], backend, shots: int, transpiled: bool = False
+    circuits: list[QuantumCircuit],
+    backend,
+    shots: int,
+    transpiled: bool = False,
+    seed: int | None = None,
 ) -> list[dict[str, int]]:
-    sampler = SamplerV2(mode=backend)
+    """Counts per circuit. Local Aer backends are run directly (seedable, and much
+    faster than SamplerV2 local mode with a large device noise model)."""
     isa = circuits if transpiled else _isa(circuits, backend)
+    if isinstance(backend, AerSimulator):
+        res = backend.run(isa, shots=shots, seed_simulator=seed).result()
+        return [dict(res.get_counts(i)) for i in range(len(isa))]
+    sampler = SamplerV2(mode=backend)
     return _counts(sampler.run(isa, shots=shots).result())
 
 

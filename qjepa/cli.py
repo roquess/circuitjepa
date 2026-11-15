@@ -35,7 +35,7 @@ def cmd_train(args) -> int:
 
 def cmd_train_all(args) -> int:
     ex.write_environment()
-    jobs = [(v, s) for v in ex.VARIANTS for s in args.seeds]
+    jobs = [(v, s) for v in args.variants for s in args.seeds]
     ov = _overrides(args)
     t0 = time.perf_counter()
     if args.jobs <= 1:
@@ -60,7 +60,7 @@ def cmd_evaluate(args) -> int:
     if args.backend == "exact":
         data = ex.evaluate_exact(runs)
     else:
-        data = ex.evaluate_shots(runs, args.backend, args.m, args.shots)
+        data = ex.evaluate_shots(runs, args.backend, args.m, args.shots, args.jobs)
     data["wall_seconds"] = time.perf_counter() - t0
     path = ex.save_eval(args.backend, data)
     print(f"wrote {path} ({data['wall_seconds']:.1f} s)")
@@ -211,6 +211,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("train-all", help="train every variant x seed")
     p.add_argument("--seeds", type=int, nargs="+", default=[0, 1, 2])
+    p.add_argument("--variants", nargs="+", default=list(ex.VARIANTS), choices=ex.VARIANTS)
     p.add_argument("--jobs", type=int, default=1, help="parallel processes (1 thread each)")
     _add_tunables(p)
     p.set_defaults(func=cmd_train_all)
@@ -219,6 +220,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--backend", required=True, help="exact, aer or fake_<name> (e.g. fake_fez)")
     p.add_argument("--m", type=int, default=16, help="test samples for shot-based backends")
     p.add_argument("--shots", type=int, default=1000)
+    p.add_argument("--jobs", type=int, default=1, help="parallel processes over runs")
     p.set_defaults(func=cmd_evaluate)
 
     p = sub.add_parser("hw-submit", help="submit tomography circuits to an IBM backend")

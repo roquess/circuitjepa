@@ -5,6 +5,8 @@ import os
 import platform
 import sys
 import time
+import zlib
+from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
@@ -61,9 +63,9 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def write_json(path: Path, obj) -> None:
+def write_json(path: Path, obj, indent: int | None = 1) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(obj, indent=1), encoding="utf-8")
+    path.write_text(json.dumps(obj, indent=indent), encoding="utf-8")
 
 
 # --------------------------------------------------------------------- training
@@ -185,7 +187,7 @@ def _metrics(run: RunResult, emb: dict, test: list[Sample], baseline_tv: float |
         baseline_tv,
     )
     out["predictor_distance"] = predictor_distance(np.asarray(run.phi)) if run.phi else 0.0
-    out["G"] = similarity_matrix(emb["context"], emb["target"]).tolist()
+    out["G"] = np.round(similarity_matrix(emb["context"], emb["target"]), 6).tolist()
     return out
 
 
@@ -256,22 +258,42 @@ def evaluate_exact(runs: dict[str, RunResult]) -> dict:
     return out
 
 
-def evaluate_shots(runs: dict[str, RunResult], backend_name: str, m: int, shots: int) -> dict:
+def sim_seed(name: str) -> int:
+    """Per-run simulator seed, independent of evaluation order."""
+    return zlib.crc32(name.encode()) & 0x7FFFFFFF
+
+
+def _shot_one(name: str, run: RunResult, backend_name: str, m: int, shots: int):
+    t0 = time.perf_counter()
     backend = get_backend(backend_name)
+    test = first_test_samples(run.config, m)
+    isa = transpile(run_circuits(run, test), backend)
+    stats = stats_by_kind(isa, len(test))
+    counts = run_counts(isa, backend, shots, transpiled=True, seed=sim_seed(name))
+    return name, blochs_from_counts(counts, len(test)), stats, time.perf_counter() - t0
+
+
+def evaluate_shots(
+    runs: dict[str, RunResult], backend_name: str, m: int, shots: int, jobs: int = 1
+) -> dict:
     embs, tests_m, wall, stats = {}, {}, {}, {}
-    for name, run in runs.items():
-        t0 = time.perf_counter()
-        test = first_test_samples(run.config, m)
-        isa = transpile(run_circuits(run, test), backend)
-        stats[name] = stats_by_kind(isa, len(test))
-        counts = run_counts(isa, backend, shots, transpiled=True)
-        embs[name] = blochs_from_counts(counts, len(test))
-        tests_m[name] = test
-        wall[name] = time.perf_counter() - t0
-        print(f"  {name}: {wall[name]:.1f} s", flush=True)
+    args = [(name, run, backend_name, m, shots) for name, run in runs.items()]
+    if jobs <= 1:
+        results = (_shot_one(*a) for a in args)
+    else:
+        pool = ProcessPoolExecutor(max_workers=jobs)
+        results = (f.result() for f in as_completed([pool.submit(_shot_one, *a) for a in args]))
+    for name, emb, st, w in results:
+        embs[name], stats[name], wall[name] = emb, st, w
+        tests_m[name] = first_test_samples(runs[name].config, m)
+        print(f"  {name}: {w:.1f} s", flush=True)
+    if jobs > 1:
+        pool.shutdown()
+    embs = {n: embs[n] for n in runs}  # keep run order
     out = _assemble(backend_name, runs, embs, tests_m, {"wall": wall, "stats": stats})
     out["m"] = m
     out["shots"] = shots
+    out["seed_simulator"] = {n: sim_seed(n) for n in runs}
     return out
 
 
@@ -436,7 +458,7 @@ def write_summary() -> dict:
 
 def save_eval(name: str, data: dict) -> Path:
     path = results_dir() / "eval" / f"{name}.json"
-    write_json(path, data)
+    write_json(path, data, indent=None)  # compact: holds m x m similarity matrices
     write_summary()
     return path
 
