@@ -86,6 +86,7 @@ def similarity_matrices(evals: dict) -> Path:
         len(bes), len(ex.VARIANTS), figsize=(3.0 * len(ex.VARIANTS), 3.0 * len(bes) + 0.4),
         squeeze=False,
     )
+    fig.subplots_adjust(top=1 - 0.9 / fig.get_figheight(), hspace=0.45, wspace=0.15)
     im = None
     for i, be in enumerate(bes):
         for j, var in enumerate(ex.VARIANTS):
@@ -102,7 +103,8 @@ def similarity_matrices(evals: dict) -> Path:
             ax.set_xticks([])
             ax.set_yticks([])
             if j == 0:
-                ax.set_ylabel(_backend_label(be, evals[be]) + "\nprediction i", fontsize=9)
+                ax.set_ylabel(_backend_label(be, evals[be]).replace(" (", "\n(", 1) + "\nprediction i",
+                              fontsize=8)
             if i == len(bes) - 1:
                 ax.set_xlabel("target j", fontsize=9)
     if im is not None:
@@ -135,13 +137,14 @@ def ablation(summary: dict, evals: dict) -> Path:
                     ax.hlines(1 / m, i - 0.45, i + 0.45, colors=INK, linestyles="--", lw=1)
             ax.text(x[-1] + 0.45, 1 / summary["backends"][bes[-1]]["_meta"]["m"], " chance 1/m",
                     va="bottom", ha="right", fontsize=8, color=INK)
-        ax.set_xticks(x, [_backend_label(be, evals[be]).split(" (")[0] for be in bes])
+        ax.set_xticks(x, [_backend_label(be, evals[be]).split(" (")[0] for be in bes],
+                      rotation=25, ha="right", rotation_mode="anchor")
         ax.set_title(title)
         ax.axhline(0, color="#888888", lw=0.8)
     handles, labels = axes[0].get_legend_handles_labels()
     fig.legend(handles, labels, loc="lower center", ncol=len(ex.VARIANTS), bbox_to_anchor=(0.5, -0.02))
     fig.suptitle("Ablation by backend (mean ± std over seeds)")
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
     path = _fig_dir() / "ablation.png"
     fig.savefig(path)
     plt.close(fig)
@@ -168,7 +171,13 @@ def dynamics_probe(summary: dict, evals: dict) -> Path:
         ax.set_xlabel("time step s")
         ax.set_title(_backend_label(be, evals[be]), fontsize=9)
     axes[0, 0].set_ylabel("probe MSE on ⟨Z_i⟩(t₀+s)")
-    axes[0, -1].legend(fontsize=7, loc="upper left", bbox_to_anchor=(1.0, 1.0))
+    # Collect entries from every panel: no_predictor has no QPU run, so the last panel lacks it.
+    entries = {}
+    for ax in axes[0]:
+        for h, lab in zip(*ax.get_legend_handles_labels()):
+            entries.setdefault(lab, h)
+    axes[0, -1].legend(list(entries.values()), list(entries.keys()), fontsize=7,
+                       loc="upper left", bbox_to_anchor=(1.0, 1.0))
     fig.suptitle("Dynamics probe: solid = predicted embedding, dashed = un-advanced context")
     fig.tight_layout()
     path = _fig_dir() / "dynamics_probe.png"

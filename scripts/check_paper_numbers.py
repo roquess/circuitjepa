@@ -5,7 +5,8 @@ source description). A claim passes when the value, formatted as in the paper,
 equals the text AND the text occurs in the paper. The script also lists decimal
 numbers in the paper that no claim covers, for manual review.
 
-Usage: python scripts/check_paper_numbers.py  (exit code 1 on any mismatch)
+Usage: python scripts/check_paper_numbers.py [--skip-transpile]  (exit code 1 on any mismatch)
+--skip-transpile skips the FakeMarrakesh re-transpilation used for the layout claims.
 """
 
 import json
@@ -201,8 +202,8 @@ for be, label in (("aer", "aer (noiseless, 1000 shots)"), ("fake_fez", "fake_fez
     add(row, row, f"eval/summary.json backends.{be}.full")
     assert SUMMARY["backends"][be]["_meta"]["shots"] == 1000 and SUMMARY["backends"][be]["_meta"]["m"] == 16
 same = {pm(S(be, "no_ema", "top1")) for be in ("aer", "fake_fez", "fake_marrakesh")}
-add("`no_ema` gives 0.521 ± 0.321 top-1 on all three simulators",
-    f"`no_ema` gives {same.pop() if len(same) == 1 else '?'} top-1 on all three simulators", "summary *.no_ema.top1")
+add("`no_ema` gives 0.521 ± 0.321 on all three",
+    f"`no_ema` gives {same.pop() if len(same) == 1 else '?'} on all three", "summary *.no_ema.top1")
 same = {pm(S(be, "untrained", "top1")) for be in ("aer", "fake_fez", "fake_marrakesh")}
 add("`untrained` gives 0.021 ± 0.036", f"`untrained` gives {same.pop() if len(same) == 1 else '?'}", "summary *.untrained.top1")
 k = {round(R(be, "full_seed0", "top1") * 16) for be in ("aer", "fake_fez", "fake_marrakesh")}
@@ -270,19 +271,63 @@ qp = {q: {p["name"]: p["value"] for p in CAL["qubits"][q]} for q in layout}
 add("median T1 of 176.4 µs", f"median T1 of {st.median(qp[q]['T1'] for q in layout):.1f} µs", "calibration qubits[layout].T1")
 add("median T2 of 184.1 µs", f"median T2 of {st.median(qp[q]['T2'] for q in layout):.1f} µs", "calibration qubits[layout].T2")
 add("median readout error of 0.0132", f"median readout error of {st.median(qp[q]['readout_error'] for q in layout):.4f}", "calibration qubits[layout].readout_error")
-add("(0.0015 and 0.0039 on the two measured latent qubits)",
-    f"({qp[layout[0]]['readout_error']:.4f} and {qp[layout[1]]['readout_error']:.4f} on the two measured latent qubits)", "calibration qubits[55,54]")
+add("(0.0015 and 0.0039 on qubits 55 and 54)",
+    f"({qp[layout[0]]['readout_error']:.4f} and {qp[layout[1]]['readout_error']:.4f} on qubits {layout[0]} and {layout[1]})", "calibration qubits[55,54]")
 edges = {frozenset(e) for e in zip(layout, layout[1:])}
 cz = {}
 for g in CAL["gates"]:
     if g["gate"] == "cz" and frozenset(g["qubits"]) in edges:
         cz[frozenset(g["qubits"])] = next(p["value"] for p in g["parameters"] if p["name"] == "gate_error")
 assert len(cz) == 4
-add("median CZ error on the four couplers of the chain is 0.00176", f"median CZ error on the four couplers of the chain is {st.median(cz.values()):.5f}", "calibration gates cz on layout chain")
-add("`last_update_date` 2026-11-13 18:22:56+01:00", f"`last_update_date` {CAL['last_update_date']}", "calibration last_update_date")
+add("median CZ error on the four couplers of this chain is 0.00176", f"median CZ error on the four couplers of this chain is {st.median(cz.values()):.5f}", "calibration gates cz on layout chain")
+add("`last_update_date` is 2026-11-13 18:22:56+01:00", f"`last_update_date` is {CAL['last_update_date']}", "calibration last_update_date")
 lag = datetime.fromisoformat(JOBS[0]["submitted_at"]) - datetime.fromisoformat(CAL["last_update_date"])
 add("about 41 hours before the first job", f"about {round(lag.total_seconds() / 3600)} hours before the first job", "jobs.json vs calibration date")
-add("predate the runs by about 41 hours", f"predate the runs by about {round(lag.total_seconds() / 3600)} hours", "jobs.json vs calibration date")
+add("overall `last_update_date` is 41 hours before", f"overall `last_update_date` is {round(lag.total_seconds() / 3600)} hours before", "jobs.json vs calibration date")
+# dates of the individual quoted values (T1, T2, readout on the layout qubits; cz on the chain)
+val_dates = [datetime.fromisoformat(p["date"]) for q in layout for p in CAL["qubits"][q]
+             if p["name"] in ("T1", "T2", "readout_error")]
+val_dates += [datetime.fromisoformat(p["date"]) for g in CAL["gates"]
+              if g["gate"] == "cz" and frozenset(g["qubits"]) in edges
+              for p in g["parameters"] if p["name"] == "gate_error"]
+t_first = datetime.fromisoformat(JOBS[0]["submitted_at"])
+lo, hi = (t_first - max(val_dates)).total_seconds() / 3600, (t_first - min(val_dates)).total_seconds() / 3600
+for txt in ("carry dates between {} and {} hours before the first job", "were measured {} to {} hours before the runs"):
+    add(txt.format(54, 57), txt.format(int(np.floor(lo)), int(np.ceil(hi))), "calibration per-parameter dates vs jobs.json")
+# snapshot retrieval time: commit that added the file (file mtime is not preserved by git)
+import subprocess  # noqa: E402
+
+added = subprocess.run(["git", "log", "--diff-filter=A", "--format=%cI", "--", "results/hardware/calibration_ibm_marrakesh.json"],
+                       cwd=ROOT, capture_output=True, text=True).stdout.strip().splitlines()[-1]
+t_cal = datetime.fromisoformat(added)
+pair_done = max(datetime.fromisoformat(METRICS[t]["timestamps"]["finished"].replace("Z", "+00:00")) for t in ("full_seed0", "untrained_seed0"))
+assert pair_done < t_cal < datetime.fromisoformat(jid["no_ema_seed0"]["submitted_at"])
+add("at about 10:13 UTC", f"at about {t_cal.astimezone(t_first.tzinfo):%H:%M} UTC", "git commit adding calibration_ibm_marrakesh.json (upper bound of retrieval time)")
+# pre-registration commit contains the criterion and precedes the first results commit
+show = subprocess.run(["git", "show", "41d5c8b"], cwd=ROOT, capture_output=True, text=True).stdout
+assert "ALPHA_GAP = 0.01" in show and "ALPHA_TOP1 = 0.05" in show and 'pre_registered": seed == "0"' in show
+add("(commit `41d5c8b`)", "(commit `41d5c8b`)", "git show 41d5c8b")
+# 'short circuits': mean two-qubit counts across branches of the full model
+tq = [cs[b]["twoq_mean"] for b in ("context", "target", "unadvanced")]
+add("on average 19–27 CZ gates", f"on average {round(min(tq))}–{round(max(tq))} CZ gates", "circuit_stats.full_seed0.*.twoq_mean")
+add("`no_predictor` seed 0 is also non-retrieving (0/64) with a gap of 0.068",
+    f"`no_predictor` seed 0 is also non-retrieving ({round(R('exact','no_predictor_seed0','top1')*64)}/64) with a gap of {f(R('exact','no_predictor_seed0','diag_gap'))}",
+    "eval/exact.json no_predictor_seed0")
+# layout variation and 2q gate type in a FakeMarrakesh re-transpilation (same pass manager)
+if "--skip-transpile" not in sys.argv:
+    import collections  # noqa: E402
+
+    from circuitjepa import experiments as ex  # noqa: E402
+    from circuitjepa.hardware import get_backend, transpile  # noqa: E402
+
+    _run = ex.load_runs(["full_seed0"])["full_seed0"]
+    _isa = transpile(ex.run_circuits(_run, ex.first_test_samples(_run.config, 16)), get_backend("fake_marrakesh"))
+    _lays = collections.Counter(tuple(qc.layout.initial_index_layout(filter_ancillas=True)) for qc in _isa).most_common()
+    _ops = {i.operation.name for qc in _isa for i in qc.data if len(i.qubits) == 2}
+    add("404 used one layout and 28 another", f"{_lays[0][1]} used one layout and {_lays[1][1]} another" if len(_lays) == 2 else "?",
+        "re-transpilation of full_seed0 circuits against FakeMarrakesh")
+    add("CZ was the only two-qubit gate", "CZ was the only two-qubit gate" if _ops == {"cz"} else "?", "same re-transpilation")
+    add("the 432 `full` seed-0 circuits", f"the {len(_isa)} `full` seed-0 circuits", "same re-transpilation")
 
 # environment
 pk = ENV["packages"]
