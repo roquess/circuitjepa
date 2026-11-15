@@ -406,12 +406,12 @@ add("at about 10:13 UTC", f"at about {t_cal.astimezone(t_first.tzinfo):%H:%M} UT
     "UPPER BOUND on retrieval time: commit time of the git commit adding calibration_ibm_marrakesh.json")
 gap_h = (datetime.fromisoformat(jid["full_seed1"]["submitted_at"]) - t_cal).total_seconds() / 3600
 add("about an hour before submissions 3 and 4", "about an hour before submissions 3 and 4" if 0.5 < gap_h < 1.5 else "?", "jobs.json vs calibration commit time")
-show = subprocess.run(["git", "show", "41d5c8b"], cwd=ROOT, capture_output=True, text=True).stdout
+show = subprocess.run(["git", "show", "a473602"], cwd=ROOT, capture_output=True, text=True).stdout
 assert "ALPHA_GAP = 0.01" in show and "ALPHA_TOP1 = 0.05" in show and 'pre_registered": seed == "0"' in show
-add("commit `41d5c8b`", "commit `41d5c8b`", "git show 41d5c8b")
-anc = subprocess.run(["git", "merge-base", "--is-ancestor", "41d5c8b", "29060b3"], cwd=ROOT).returncode
+add("commit `a473602`", "commit `a473602`", "git show a473602")
+anc = subprocess.run(["git", "merge-base", "--is-ancestor", "a473602", "190699a"], cwd=ROOT).returncode
 ct = lambda c: int(subprocess.run(["git", "show", "-s", "--format=%ct", c], cwd=ROOT, capture_output=True, text=True).stdout)
-assert anc == 0 and ct("41d5c8b") < ct("29060b3"), "pre-registration commit is not before the first results commit"
+assert anc == 0 and ct("a473602") < ct("190699a"), "pre-registration commit is not before the first results commit"
 tq = [cs[b]["twoq_mean"] for b in ("context", "target", "unadvanced")]
 add("on average 19–27 CZ gates after transpilation for `ibm_marrakesh`", f"on average {round(min(tq))}–{round(max(tq))} CZ gates after transpilation for `{SUB1['backend']}`", "circuit_stats.full_seed0.*.twoq_mean")
 if "--skip-transpile" not in sys.argv:
