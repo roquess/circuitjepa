@@ -59,6 +59,12 @@ not separate `full` from `no_predictor` (median MSE 0.0480 vs 0.0473), and for
 encoders differ on two near-constant embedding components. See the paper's
 Results and Limitations sections.
 
+Independent held-out test set: the configuration was selected on the original test
+set (data seed 5678). A second test set of 64 samples with data seed 424242
+(`HELDOUT_TEST_DATA_SEED` in `circuitjepa/config.py`), never used for any choice,
+was fixed before any evaluation on it; the trained runs are evaluated on it without
+retraining.
+
 ## Install
 
 Python 3.12 is required. Tested with Python 3.12.10, qiskit 2.6.2, qiskit-aer 0.18.2,
