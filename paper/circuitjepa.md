@@ -20,7 +20,7 @@ header-includes:
   - '`\renewenvironment{CSLReferences}[2]{\begin{list}{}{\setlength{\itemindent}{0pt}\setlength{\leftmargin}{0pt}\setlength{\parsep}{0pt}\ifodd #1 \setlength{\leftmargin}{\cslhangindent}\setlength{\itemindent}{-1\cslhangindent}\fi\setlength{\itemsep}{0.35\baselineskip}}}{\end{list}}`{=latex}'
 ---
 
-Code and data: <https://github.com/roquess/circuitjepa>
+Code and data: <https://github.com/roquess/circuitjepa>, archived on Zenodo as [doi:10.5281/zenodo.24259038](https://doi.org/10.5281/zenodo.24259038)
 
 # Introduction
 
@@ -182,7 +182,7 @@ I built CircuitJEPA, a JEPA whose three parametrized components are circuits: a 
 
 # Reproducing the results {-}
 
-All results, raw QPU counts and figures are committed; the numbers in this version come from the results at commit `990911d` of <https://github.com/roquess/circuitjepa> (release `v1.0.0`). Install with `pip install -e ".[dev]" -c constraints.txt` (Python 3.12.10; `constraints.txt` pins qiskit 2.6.2, qiskit-aer 0.18.2, qiskit-ibm-runtime 0.52.1, torch 2.15.0, numpy 2.5.4, scipy 1.18.1, matplotlib 3.11.2; other versions should give similar but not bit-identical numbers). From the repository root:
+All results, raw QPU counts and figures are committed; the numbers in this version come from the results at commit `56c38db` of <https://github.com/roquess/circuitjepa> (release `v1.0.0`). Install with `pip install -e ".[dev]" -c constraints.txt` (Python 3.12.10; `constraints.txt` pins qiskit 2.6.2, qiskit-aer 0.18.2, qiskit-ibm-runtime 0.52.1, torch 2.15.0, numpy 2.5.4, scipy 1.18.1, matplotlib 3.11.2; other versions should give similar but not bit-identical numbers). From the repository root:
 
 ```
 circuitjepa train-all --jobs 12 --delta 0.5                          # seeds 0-2
