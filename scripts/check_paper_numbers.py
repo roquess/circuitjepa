@@ -20,7 +20,6 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "results"
 PAPER = (ROOT / "paper" / "circuitjepa.md").read_text(encoding="utf-8")
 
@@ -33,8 +32,6 @@ SUMMARY = load("eval/summary.json")
 EVAL = {b: load(f"eval/{b}.json") for b in ("exact", "aer", "fake_fez", "fake_marrakesh", "qpu")}
 JOBS = [json.loads(l) for l in (RES / "hardware/jobs.json").read_text().splitlines() if l.strip()]
 METRICS = load("hardware/job_metrics.json")
-SUB1 = load("hardware/submission_ibm_marrakesh_20261115T100708+0000_6cc5cc3c.json")
-SUB2 = load("hardware/submission_ibm_marrakesh_20261115T101632+0000_a8e12a16.json")
 CAL = load("hardware/calibration_ibm_marrakesh.json")
 ENV = load("ENVIRONMENT.json")
 RUN = {p.stem: json.loads(p.read_text()) for p in (RES / "runs").glob("*.json")}
@@ -76,56 +73,75 @@ for var in ("full", "no_ema", "no_predictor", "untrained"):
         + [pm(S("exact", var, "predictor_distance"))]
     ) + " |"
     add(row, row, f"eval/summary.json backends.exact.{var}.*")
-    assert S("exact", var, "top1")["n"] == 3
+    assert S("exact", var, "top1")["n"] == 10
 add("No run was flagged as collapsed", "No run was flagged as collapsed"
-        if all(r["collapsed"] is False for b in EVAL.values() for r in b["runs"].values()) else "?",
-    "eval/*.json runs.*.collapsed")
+        if all(r["collapsed"] is not True for b in EVAL.values() for r in b["runs"].values()) else "?",
+    "eval/*.json runs.*.collapsed (None = no same-seed baseline, QPU full_seed2)")
 from circuitjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS  # noqa: E402
 
 add("for 30 parameters in total", f"for {N_ENC_PARAMS} parameters in total", "circuitjepa/ansatz.py N_ENC_PARAMS")
 add("8 parameters)", f"{N_PRED_PARAMS} parameters)", "circuitjepa/ansatz.py N_PRED_PARAMS")
 
-# ---------------------------------------------------------------- per-seed exact
-for v in ("full", "no_ema"):
-    for s in range(3):
+# ---------------------------------------------------------------- per-seed exact (10 seeds)
+SEEDS = range(10)
+for v in ("full", "no_ema", "no_predictor", "untrained"):
+    for s in SEEDS:
         k = EVAL["exact"]["runs"][f"{v}_seed{s}"]["top1"] * 64
         assert abs(k - round(k)) < 1e-9
-for s, txt in enumerate(["59/64 (0.922)", "21/64 (0.328)", "10/64 (0.156)"]):
-    t = R("exact", f"full_seed{s}", "top1")
-    add(txt, f"{round(t * 64)}/64 ({f(t)})", f"eval/exact.json runs.full_seed{s}.top1")
-add("0.872, 0.536 and 0.486",
-    ", ".join(f(R("exact", f"full_seed{s}", "diag_gap")) for s in (0, 1)) + " and " + f(R("exact", "full_seed2", "diag_gap")),
-    "eval/exact.json runs.full_seed*.diag_gap")
-fl = [RUN[f"full_seed{s}"]["history"][-1] for s in range(3)]
-add("0.117, 0.442 and 0.466", f"{f(fl[0])}, {f(fl[1])} and {f(fl[2])}", "runs/full_seed*.json history[-1]")
-add("(0.922, 0.328, 0.156)", "(" + ", ".join(f(R("exact", f"full_seed{s}", "top1")) for s in range(3)) + ")",
+hits = lambda be, run, m: round(R(be, run, "top1") * m)
+add("59, 21, 10, 5, 28, 36, 50, 59, 15 and 62 out of 64",
+    ", ".join(str(hits("exact", f"full_seed{s}", 64)) for s in range(9)) + f" and {hits('exact', 'full_seed9', 64)} out of 64",
     "eval/exact.json runs.full_seed*.top1")
-add("20/64, 48/64 and 7/64",
-    f"{round(R('exact','no_ema_seed0','top1')*64)}/64, {round(R('exact','no_ema_seed1','top1')*64)}/64 and {round(R('exact','no_ema_seed2','top1')*64)}/64",
+add("20, 48, 7, 11, 31, 44, 12, 1, 61 and 1 out of 64",
+    ", ".join(str(hits("exact", f"no_ema_seed{s}", 64)) for s in range(9)) + f" and {hits('exact', 'no_ema_seed9', 64)} out of 64",
     "eval/exact.json runs.no_ema_seed*.top1")
+ft = [R("exact", f"full_seed{s}", "top1") for s in SEEDS]
+add("(median 0.5)", f"(median {st.median(ft):g})", "eval/exact.json full top1 median")
+fl = [RUN[f"full_seed{s}"]["history"][-1] for s in SEEDS]
+add("range from 0.105 to 0.532", f"range from {f(min(fl))} to {f(max(fl))}", "runs/full_seed*.json history[-1]")
+late = [R("exact", f"full_seed{s}", "top1") for s in range(3, 10)]
+early = [R("exact", f"full_seed{s}", "top1") for s in range(3)]
+add("average 0.569 ± 0.341, against 0.469 ± 0.402",
+    f"average {f(np.mean(late))} ± {f(np.std(late, ddof=1))}, against {f(np.mean(early))} ± {f(np.std(early, ddof=1))}",
+    "eval/exact.json full seeds 3-9 vs 0-2")
 T = EVAL["exact"]["tests"]
+assert all(T[f"full_seed{s}_vs_untrained_seed{s}"]["pass_gap"] and T[f"full_seed{s}_vs_untrained_seed{s}"]["pass_top1"] for s in SEEDS)
 add("sign-flip p = 1.0 × 10^-4^ for each",
     "sign-flip p = " + (sci(T["full_seed0_vs_untrained_seed0"]["signflip_p_gap"])
                          if len({t["signflip_p_gap"] for t in T.values()}) == 1 else "?") + " for each",
     "eval/exact.json tests.*.signflip_p_gap")
-add("binomial p = 1.9 × 10^-100^, 2.5 × 10^-22^ and 6.1 × 10^-8^",
-    "binomial p = " + ", ".join(sci(T[f"full_seed{s}_vs_untrained_seed{s}"]["top1_binom_p"]) for s in (0, 1))
-    + " and " + sci(T["full_seed2_vs_untrained_seed2"]["top1_binom_p"]),
-    "eval/exact.json tests.*.top1_binom_p")
-add("0.469 ± 0.402 (chance 1/64)", pm(S("exact", "full", "top1")) + " (chance 1/64)", "summary exact.full.top1")
-add("top-1 ranges from 0.156 to 0.922",
-    f"top-1 ranges from {f(min(R('exact', f'full_seed{s}', 'top1') for s in range(3)))} to "
-    f"{f(max(R('exact', f'full_seed{s}', 'top1') for s in range(3)))}", "eval/exact.json full_seed*.top1")
+bp = {s: T[f"full_seed{s}_vs_untrained_seed{s}"]["top1_binom_p"] for s in SEEDS}
+smax, smin = max(bp, key=bp.get), min(bp, key=bp.get)
+add("binomial p between 3.3 × 10^-3^ for seed 3 and 2.0 × 10^-109^ for seed 9",
+    f"binomial p between {sci(bp[smax])} for seed {smax} and {sci(bp[smin])} for seed {smin}", "eval/exact.json tests.*.top1_binom_p")
+add("0.539 ± 0.341 (chance 1/64)", pm(S("exact", "full", "top1")) + " (chance 1/64)", "summary exact.full.top1")
+add("(from 5/64 to 62/64)", f"(from {min(hits('exact', f'full_seed{s}', 64) for s in SEEDS)}/64 to {max(hits('exact', f'full_seed{s}', 64) for s in SEEDS)}/64)",
+    "eval/exact.json full top1 range")
+add("top-1 ranges from 0.078 to 0.969", f"top-1 ranges from {f(min(ft))} to {f(max(ft))}", "eval/exact.json full_seed*.top1")
 add("1/64 ≈ 0.016", f"1/64 ≈ {f(1/64)}", "chance level")
+order = sorted(SEEDS, key=lambda s: -ft[s])
+assert order[0] == 9 and ft[0] == ft[7] and ft[0] < ft[9] and sum(x > ft[0] for x in ft) == 1
+add("it ties for second (seed 9 reaches 62/64)", f"it ties for second (seed {order[0]} reaches {hits('exact', f'full_seed{order[0]}', 64)}/64)",
+    "eval/exact.json full top1 ranking")
+add("the best of the three seeds available when the pair was designated", "the best of the three seeds available when the pair was designated"
+    if max(range(3), key=lambda s_: ft[s_]) == 0 else "?", "eval/exact.json full_seed0-2.top1")
 
 # ---------------------------------------------------------------- ablation prose
-add("top-1 retrieval is 0.031 ± 0.054", "top-1 retrieval is " + pm(S("exact", "no_predictor", "top1")), "summary exact.no_predictor.top1")
-add("diagonal gap is 0.175 ± 0.204", "diagonal gap is " + pm(S("exact", "no_predictor", "diag_gap")), "summary exact.no_predictor.diag_gap")
-add("`no_ema` reaches 0.391 ± 0.327 top-1 and 0.573 ± 0.219 diagonal gap",
-    f"`no_ema` reaches {pm(S('exact','no_ema','top1'))} top-1 and {pm(S('exact','no_ema','diag_gap'))} diagonal gap",
-    "summary exact.no_ema")
-add("(1.527 ± 0.522)", f"({pm(S('exact','no_ema','total_var'))})", "summary exact.no_ema.total_var")
-add("(1.562 ± 0.479)", f"({pm(S('exact','full','total_var'))})", "summary exact.full.total_var")
+add("top-1 retrieval is 0.031 ± 0.040", "top-1 retrieval is " + pm(S("exact", "no_predictor", "top1")), "summary exact.no_predictor.top1")
+add("diagonal gap is 0.116 ± 0.118", "diagonal gap is " + pm(S("exact", "no_predictor", "diag_gap")), "summary exact.no_predictor.diag_gap")
+add("`no_ema` reaches 0.369 ± 0.332 top-1 and 0.486 ± 0.286 diagonal gap",
+    f"`no_ema` reaches {pm(S('exact','no_ema','top1'))} top-1 and {pm(S('exact','no_ema','diag_gap'))} diagonal gap", "summary exact.no_ema")
+add("target variance is 1.288 ± 0.515 (`full`: 1.552 ± 0.370)",
+    f"target variance is {pm(S('exact','no_ema','total_var'))} (`full`: {pm(S('exact','full','total_var'))})", "summary exact total_var")
+ratio = lambda v, s: R("exact", f"{v}_seed{s}", "total_var") / R("exact", f"untrained_seed{s}", "total_var")
+add("seeds 7 and 9 retrieve 1 of 64 with gaps of 0.062 and 0.053 and target variances at 41% and 51% of their untrained baselines",
+    f"seeds 7 and 9 retrieve {hits('exact','no_ema_seed7',64)} of 64 with gaps of {f(R('exact','no_ema_seed7','diag_gap'))} and "
+    f"{f(R('exact','no_ema_seed9','diag_gap'))} and target variances at {round(100*ratio('no_ema',7))}% and {round(100*ratio('no_ema',9))}% of their untrained baselines",
+    "eval/exact.json no_ema_seed7/9")
+assert hits("exact", "no_ema_seed9", 64) == 1
+nef = sum(1 for s in SEEDS if R("exact", f"no_ema_seed{s}", "diag_gap") < 0.07)
+add("2 of 10 `no_ema` seeds ended", f"{nef} of 10 `no_ema` seeds ended", "eval/exact.json no_ema gap < 0.07")
+add("left 2 of 10 seeds near-collapsed", f"left {nef} of 10 seeds near-collapsed", "same (abstract)")
 
 # tuning attempts (results/tuning/attempt*/exact.json)
 def tuning(att: int, var: str) -> str:
@@ -151,106 +167,188 @@ add("$\\delta = 0.5$, $t_0 \\le 3$, 3 encoder layers, 2 predictor layers, learni
     f"$\\delta = {cfg['delta']}$, $t_0 \\le {cfg['t0_max']}$, 3 encoder layers, 2 predictor layers, learning rate {cfg['lr']} (Adam), "
     f"{cfg['epochs']} epochs, $\\tau = {cfg['tau']}$, batch size {cfg['batch_size']}, {cfg['n_train']} training and {cfg['n_test']} test samples",
     "runs/full_seed0.json config (layers: circuitjepa/ansatz.py)")
-assert all(r["config"] == {**cfg, "variant": r["config"]["variant"], "seed": r["config"]["seed"]} for r in RUN.values())
+# every run (seeds 0-9) uses exactly the final configuration: no re-tuning for seeds 3-9
+assert len(RUN) == 40 and all(r["config"] == {**cfg, "variant": r["config"]["variant"], "seed": r["config"]["seed"]} for r in RUN.values())
+add("Four variants are trained with seeds 0–9", "Four variants are trained with seeds " + f"{min(r['config']['seed'] for r in RUN.values())}–{max(r['config']['seed'] for r in RUN.values())}",
+    "runs/*.json config.seed")
 add("256 training samples (data seed 1234) and 64 test samples (data seed 5678)",
     f"{cfg['n_train']} training samples (data seed {cfg['train_data_seed']}) and {cfg['n_test']} test samples (data seed {cfg['test_data_seed']})",
     "runs/*.json config")
-sys.path.insert(0, str(ROOT))
 from circuitjepa.data import make_dataset  # noqa: E402
 
 cnt = [sum(1 for x in make_dataset(64, 5678, 3) if x.s == s) for s in (1, 2, 3)]
 add("18, 23 and 23 samples", f"{cnt[0]}, {cnt[1]} and {cnt[2]} samples", "test set (seed 5678)")
 cnt16 = [sum(1 for x in make_dataset(16, 5678, 3) if x.s == s) for s in (1, 2, 3)]
 add("(5, 5 and 6 samples)", f"({cnt16[0]}, {cnt16[1]} and {cnt16[2]} samples)", "first 16 test samples")
+import subprocess  # noqa: E402
+
+# chronology: seeds 3-9 were committed after the first committed results (seeds 0-2)
+first_add = lambda path: subprocess.run(["git", "log", "--diff-filter=A", "--format=%ct", "--", path], cwd=ROOT,
+                                        capture_output=True, text=True).stdout.split()
+t_s0, t_s3 = first_add("results/runs/full_seed0.json"), first_add("results/runs/full_seed3.json")
+assert t_s0 and (not t_s3 or int(t_s3[-1]) > int(t_s0[-1])), "seeds 3-9 must be added after seeds 0-2"
 
 # ---------------------------------------------------------------- collapse
 add("exact diagonal gap of 0.0457", f"exact diagonal gap of {f(R('exact','no_predictor_seed2','diag_gap'),4)}", "eval/exact.json no_predictor_seed2.diag_gap")
+assert [s for s in SEEDS for v in ("full", "no_ema", "no_predictor") if R("exact", f"{v}_seed{s}", "diag_gap") < 0.05] == [2]
 add("its target total variance is 0.720, against 1.158",
     f"its target total variance is {f(R('exact','no_predictor_seed2','total_var'))}, against {f(R('exact','untrained_seed2','total_var'))}",
     "eval/exact.json no_predictor_seed2 / untrained_seed2 total_var")
-add("Its retrieval is 0/64", f"Its retrieval is {round(R('exact','no_predictor_seed2','top1')*64)}/64", "eval/exact.json")
+add("Its retrieval is 0/64", f"Its retrieval is {hits('exact','no_predictor_seed2',64)}/64", "eval/exact.json")
+others = [s for s in SEEDS if s != 2 and 0.05 <= R("exact", f"no_predictor_seed{s}", "diag_gap") < 0.07]
+og = [R("exact", f"no_predictor_seed{s}", "diag_gap") for s in others]
+add("Six other `no_predictor` seeds have gaps between 0.059 and 0.068 with at most 3 of 64 retrieved",
+    f"{['Zero','One','Two','Three','Four','Five','Six','Seven'][len(others)]} other `no_predictor` seeds have gaps between {f(min(og))} and {f(max(og))} "
+    f"with at most {max(hits('exact', f'no_predictor_seed{s}', 64) for s in others)} of 64 retrieved", "eval/exact.json no_predictor gaps")
+add("`no_predictor` seed 0 (0/64, gap 0.068)", f"`no_predictor` seed 0 ({hits('exact','no_predictor_seed0',64)}/64, gap {f(R('exact','no_predictor_seed0','diag_gap'))})",
+    "eval/exact.json no_predictor_seed0")
 norms = [r["mean_norm"] for r in EVAL["exact"]["runs"].values()]
-add("between 0.95 and 1.48", f"between {np.floor(min(norms)*100)/100:.2f} and {np.ceil(max(norms)*100)/100:.2f}", "eval/exact.json runs.*.mean_norm (min floored, max ceiled)")
+add("between 0.93 and 1.48", f"between {np.floor(min(norms)*100)/100:.2f} and {np.ceil(max(norms)*100)/100:.2f}", "eval/exact.json runs.*.mean_norm (min floored, max ceiled)")
 
 # ---------------------------------------------------------------- probe
-add("(0.0498 ± 0.0082 against 0.0830 ± 0.0289)",
+add("(0.0483 ± 0.0058 against 0.0715 ± 0.0258)",
     f"({pm(S('exact','full','probe_mse_pred'),4)} against {pm(S('exact','full','probe_mse_unadv'),4)})", "summary exact.full.probe")
 bys = lambda k: ", ".join(f(S("exact", "full", f"{k}[{s}]")["mean"], 4) for s in (1, 2, 3))
-add("(0.0425, 0.0470, 0.0582 against 0.0614, 0.0992, 0.0838",
+add("(0.0424, 0.0471, 0.0541 against 0.0566, 0.0831, 0.0716",
     f"({bys('probe_mse_pred_by_s')} against {bys('probe_mse_unadv_by_s')}", "summary exact.full.probe_*_by_s")
-add("(0.0414 against 0.0936, and 0.0579 against 0.1052)",
-    f"({f(R('exact','full_seed0','probe_mse_pred'),4)} against {f(R('exact','full_seed0','probe_mse_unadv'),4)}, and "
-    f"{f(R('exact','full_seed1','probe_mse_pred'),4)} against {f(R('exact','full_seed1','probe_mse_unadv'),4)})", "eval/exact.json full_seed0/1")
-add("(0.0500 against 0.0504)",
-    f"({f(R('exact','full_seed2','probe_mse_pred'),4)} against {f(R('exact','full_seed2','probe_mse_unadv'),4)})", "eval/exact.json full_seed2")
-add("probe MSE of 0.0474 ± 0.0012", f"probe MSE of {pm(S('exact','no_predictor','probe_mse_pred'),4)}", "summary exact.no_predictor.probe_mse_pred")
-add("$\\lVert P - I \\rVert$ of 0.453 ± 0.330", f"$\\lVert P - I \\rVert$ of {pm(S('exact','full','predictor_distance'))}", "summary exact.full.predictor_distance")
+npu = sum(R("exact", f"full_seed{s}", "probe_mse_pred") < R("exact", f"full_seed{s}", "probe_mse_unadv") for s in SEEDS)
+add("and in 8 of 10 seeds", f"and in {npu} of 10 seeds", "eval/exact.json full probe pred < unadv")
+pmed = lambda v: st.median(R("exact", f"{v}_seed{s}", "probe_mse_pred") for s in SEEDS)
+add("the median probe MSE is 0.0473, against 0.0480 for `full`", f"the median probe MSE is {f(pmed('no_predictor'),4)}, against {f(pmed('full'),4)} for `full`",
+    "eval/exact.json probe_mse_pred medians")
+add("$\\lVert P - I \\rVert$ of 0.461 ± 0.259", f"$\\lVert P - I \\rVert$ of {pm(S('exact','full','predictor_distance'))}", "summary exact.full.predictor_distance")
+npp = {s: R("exact", f"no_predictor_seed{s}", "probe_mse_pred") for s in SEEDS}
+worst = max(npp, key=npp.get)
+rest = [v for s, v in npp.items() if s != worst]
+add("The `no_predictor` mean of 1.9033 ± 5.8633 comes from seed 5 alone, whose probe MSE is 18.5904; without seed 5 the mean is 0.0492 ± 0.0064",
+    f"The `no_predictor` mean of {pm(S('exact','no_predictor','probe_mse_pred'),4)} comes from seed {worst} alone, whose probe MSE is {f(npp[worst],4)}; "
+    f"without seed {worst} the mean is {f(np.mean(rest),4)} ± {f(np.std(rest, ddof=1),4)}", "eval/exact.json no_predictor probe")
+assert max(rest) < 0.1
+# anomaly mechanism, recomputed from the run's exact embeddings
+from circuitjepa import experiments as ex  # noqa: E402
+from circuitjepa.metrics import _design, fit_probe  # noqa: E402
+from circuitjepa.paulis import PAULI_LABELS  # noqa: E402
+
+_r5 = ex.load_runs(["no_predictor_seed5"])["no_predictor_seed5"]
+_tr, _te = ex.datasets(_r5.config)
+_S = ex.exact_embeddings(_r5, _tr, "target")
+_P = ex.exact_embeddings(_r5, _te, "context")
+_W = fit_probe(_S, ex.magnetisations(_tr, _r5.config.delta))
+_Zte = ex.magnetisations(_te, _r5.config.delta)
+_ix, _iy = PAULI_LABELS.index("XZ"), PAULI_LABELS.index("YZ")
+_low = set(np.argsort(_S.std(0))[:2])
+assert _low == {_ix, _iy}
+add("(standard deviations 0.0072 and 0.0055)", f"(standard deviations {f(_S[:, _ix].std(), 4)} and {f(_S[:, _iy].std(), 4)})", "no_predictor_seed5 train-target std XZ, YZ")
+add("weights of up to 33.08", f"weights of up to {np.abs(_W[:-1]).max():.2f}", "no_predictor_seed5 ridge probe weights")
+add("shift the means of these components by 0.082 and 0.151",
+    f"shift the means of these components by {f(_P[:, _ix].mean() - _S[:, _ix].mean())} and {f(_P[:, _iy].mean() - _S[:, _iy].mean())}",
+    "no_predictor_seed5 test-pred mean - train-target mean")
+_err = np.mean((_design(_P) @ _W - _Zte) ** 2, axis=1)
+add("so all 64 test samples have errors above 1", f"so all {int((_err > 1).sum())} test samples have errors above 1" if len(_err) == 64 else "?", "no_predictor_seed5 per-sample probe error")
+_St = ex.exact_embeddings(_r5, _te, "target")
+add("the probe's test MSE is 0.0295", f"the probe's test MSE is {f(np.mean((_design(_St) @ _W - _Zte) ** 2), 4)}", "no_predictor_seed5 probe on test targets")
+add("`no_predictor` seed 0 (0.4694)", f"`no_predictor` seed 0 ({f(R('qpu','no_predictor_seed0','probe_mse_pred'),4)})", "eval/qpu.json no_predictor_seed0")
 diff = lambda be, run: abs(R(be, run, "probe_mse_pred") - R(be, run, "probe_mse_unadv"))
-add("reach 0.0519 on aer, 0.0905 on fake_fez and 0.0742 on fake_marrakesh",
-    f"reach {f(diff('aer','no_predictor_seed0'),4)} on aer, {f(diff('fake_fez','no_predictor_seed0'),4)} on fake_fez and {f(diff('fake_marrakesh','no_predictor_seed0'),4)} on fake_marrakesh",
-    "eval/{aer,fake_fez,fake_marrakesh}.json no_predictor_seed0 |pred-unadv|")
-for be in ("aer", "fake_fez", "fake_marrakesh"):  # seed 0 is the maximum on each backend
-    assert max(diff(be, f"no_predictor_seed{s}") for s in range(3)) == diff(be, "no_predictor_seed0")
-add("(for example 0.0475 on aer for seed 0)", f"(for example {f(diff('aer','full_seed0'),4)} on aer for seed 0)", "eval/aer.json full_seed0")
-for be in ("aer", "fake_fez", "fake_marrakesh", "qpu"):
-    full_runs = [n for n in EVAL[be]["runs"] if n.startswith("full")]
-    assert max(diff(be, n) for n in full_runs) <= diff("fake_fez", "no_predictor_seed0")
+mx = {be: max((diff(be, f"no_predictor_seed{s}"), s) for s in SEEDS if s != worst) for be in ("aer", "fake_fez", "fake_marrakesh")}
+add("Excluding seed 5, they reach 0.1035 on aer, 0.0905 on fake_fez and 0.0742 on fake_marrakesh (seed 5: 5.1599, 3.888 and 4.7669)",
+    f"Excluding seed {worst}, they reach {f(mx['aer'][0],4)} on aer, {f(mx['fake_fez'][0],4)} on fake_fez and {f(mx['fake_marrakesh'][0],4)} on fake_marrakesh "
+    f"(seed {worst}: {f(diff('aer', f'no_predictor_seed{worst}'),4)}, {diff('fake_fez', f'no_predictor_seed{worst}'):.4g} and {f(diff('fake_marrakesh', f'no_predictor_seed{worst}'),4)})",
+    "eval/{aer,fake_fez,fake_marrakesh}.json no_predictor |pred-unadv|")
+fullmax = max(R(be, f"full_seed{s}", "probe_mse_unadv") - R(be, f"full_seed{s}", "probe_mse_pred") for be in ("aer", "fake_fez", "fake_marrakesh") for s in SEEDS)
+add("The largest pred-versus-unadvanced difference of `full` on these backends is 0.0723", f"The largest pred-versus-unadvanced difference of `full` on these backends is {f(fullmax,4)}",
+    "eval/{aer,fake_fez,fake_marrakesh}.json full unadv-pred")
+assert fullmax < min(v[0] for v in mx.values()) or fullmax < max(v[0] for v in mx.values())
 
 # ---------------------------------------------------------------- Table 2 (shot sims)
 for be, label in (("aer", "aer (noiseless, 1000 shots)"), ("fake_fez", "fake_fez"), ("fake_marrakesh", "fake_marrakesh")):
     row = f"| {label} | " + " | ".join(pm(S(be, "full", k)) for k in ("top1", "diag_gap", "total_var", "mean_norm")) + " |"
     add(row, row, f"eval/summary.json backends.{be}.full")
     assert SUMMARY["backends"][be]["_meta"]["shots"] == 1000 and SUMMARY["backends"][be]["_meta"]["m"] == 16
-same = {pm(S(be, "no_ema", "top1")) for be in ("aer", "fake_fez", "fake_marrakesh")}
-add("`no_ema` gives 0.521 ± 0.321 on all three",
-    f"`no_ema` gives {same.pop() if len(same) == 1 else '?'} on all three", "summary *.no_ema.top1")
+    assert S(be, "full", "top1")["n"] == 10
+add("`no_ema` gives 0.494 ± 0.330, 0.481 ± 0.331 and 0.494 ± 0.330",
+    "`no_ema` gives " + ", ".join(pm(S(be, "no_ema", "top1")) for be in ("aer", "fake_fez")) + " and " + pm(S("fake_marrakesh", "no_ema", "top1")),
+    "summary *.no_ema.top1")
 same = {pm(S(be, "untrained", "top1")) for be in ("aer", "fake_fez", "fake_marrakesh")}
-add("`untrained` gives 0.021 ± 0.036", f"`untrained` gives {same.pop() if len(same) == 1 else '?'}", "summary *.untrained.top1")
-k = {round(R(be, "full_seed0", "top1") * 16) for be in ("aer", "fake_fez", "fake_marrakesh")}
-add("for seed 0 the top-1 is 15/16 on all three", f"for seed 0 the top-1 is {k.pop() if len(k) == 1 else '?'}/16 on all three", "eval/*.json full_seed0.top1")
-k = {round(R(be, "no_ema_seed0", "top1") * 16) for be in ("aer", "fake_fez", "fake_marrakesh")}
-add("(7/16), as on all three shot-based simulators", f"({k.pop() if len(k) == 1 else '?'}/16), as on all three shot-based simulators", "eval/*.json no_ema_seed0.top1")
+add("`untrained` gives 0.037 ± 0.044 on all three", f"`untrained` gives {same.pop() if len(same) == 1 else '?'} on all three", "summary *.untrained.top1")
 
-# ---------------------------------------------------------------- Table 3 (QPU)
-for be, run, label in (("aer", "full_seed0", "full, aer"), ("fake_marrakesh", "full_seed0", "full, fake_marrakesh"),
-                       ("qpu", "full_seed0", "full, ibm_marrakesh"), ("qpu", "no_ema_seed0", "no_ema, ibm_marrakesh"),
-                       ("qpu", "untrained_seed0", "untrained, ibm_marrakesh")):
-    row = f"| {label} | " + " | ".join(f(R(be, run, k)) for k in ("top1", "diag_gap", "total_var", "mean_norm")) + " |"
-    add(row, row, f"eval/{be}.json runs.{run}")
+# ---------------------------------------------------------------- Table 3 (all QPU runs vs simulators)
+QR = EVAL["qpu"]["runs"]
+assert len(QR) == 7
+labels = {"full_seed0": "full seed 0 (pre-reg.)", "untrained_seed0": "untrained seed 0 (pre-reg.)", "no_ema_seed0": "no_ema seed 0",
+          "full_seed1": "full seed 1 (expl.)", "full_seed2": "full seed 2 (expl.)", "no_predictor_seed0": "no_predictor seed 0 (expl.)",
+          "untrained_seed1": "untrained seed 1 (expl.)"}
+for run, lab in labels.items():
+    row = (f"| {lab} | {QR[run]['shots']} | {hits('qpu', run, 16)}/16 | {f(R('qpu', run, 'diag_gap'))} | "
+           f"{hits('aer', run, 16)}/16 | {f(R('aer', run, 'diag_gap'))} | {hits('fake_marrakesh', run, 16)}/16 |")
+    add(row, row, f"eval/qpu.json, aer.json, fake_marrakesh.json runs.{run}")
+    assert EVAL["qpu"]["sim_comparison"][run]["aer"]["top1"] == R("aer", run, "top1")
+assert max(abs(hits("qpu", r, 16) - hits("aer", r, 16)) for r in QR) == 2
+add("QPU top-1 is within two hits of the aer value", "QPU top-1 is within two hits of the aer value", "eval/qpu.json vs aer.json")
 add("from 0.847 to 0.827", f"from {f(R('aer','full_seed0','diag_gap'))} to {f(R('qpu','full_seed0','diag_gap'))}", "eval/aer,qpu full_seed0.diag_gap")
 add("from 1.823 to 1.218 and the mean norm from 1.441 to 1.241",
     f"from {f(R('aer','full_seed0','total_var'))} to {f(R('qpu','full_seed0','total_var'))} and the mean norm from "
     f"{f(R('aer','full_seed0','mean_norm'))} to {f(R('qpu','full_seed0','mean_norm'))}", "eval/aer,qpu full_seed0")
-add("gives 0.438 top-1 (7/16)", f"gives {f(R('qpu','no_ema_seed0','top1'))} top-1 ({round(R('qpu','no_ema_seed0','top1')*16)}/16)", "eval/qpu.json no_ema_seed0")
 add("15 of 16 targets on the QPU, as on the simulators, against 1 of 16",
-    f"{round(R('qpu','full_seed0','top1')*16)} of 16 targets on the QPU, as on the simulators, against {round(R('qpu','untrained_seed0','top1')*16)} of 16",
-    "eval/qpu.json")
+    f"{hits('qpu','full_seed0',16)} of 16 targets on the QPU, as on the simulators, against {hits('qpu','untrained_seed0',16)} of 16", "eval/qpu.json")
 QT = EVAL["qpu"]["tests"]["full_seed0_vs_untrained_seed0"]
 assert QT["pre_registered"] and QT["pass_gap"] and QT["pass_top1"] and QT["m"] == 16 and QT["top1_hits"] == 15
+assert [k for k, t in EVAL["qpu"]["tests"].items() if t["pre_registered"]] == ["full_seed0_vs_untrained_seed0"]
 add("The diagonal-gap test gives p = 1.0 × 10^-4^", f"The diagonal-gap test gives p = {sci(QT['signflip_p_gap'])}", "eval/qpu.json tests")
 add("the binomial top-1 test gives p = 1.3 × 10^-17^", f"the binomial top-1 test gives p = {sci(QT['top1_binom_p'])}", "eval/qpu.json tests")
 add("(sign-flip p = 1.0 × 10^-4^, binomial p = 1.3 × 10^-17^)", f"(sign-flip p = {sci(QT['signflip_p_gap'])}, binomial p = {sci(QT['top1_binom_p'])})", "eval/qpu.json tests (abstract)")
 add("$1/10{,}001 \\approx 1.0 \\times 10^{-4}$", "$1/10{,}001 \\approx " + f"{1/10001:.1e}".replace("e-04", " \\times 10^{-4}") + "$", "metrics.signflip_p, n_resamples=10000")
 assert abs(QT["signflip_p_gap"] - 1 / 10001) < 1e-15
-q = SUMMARY["backends"]["qpu"]["full"]
-add("1.000, 1.000 and 0.833", f"{f(q['top1_by_s[1]']['mean'])}, {f(q['top1_by_s[2]']['mean'])} and {f(q['top1_by_s[3]']['mean'])}", "summary qpu.full.top1_by_s")
+q = QR["full_seed0"]["top1_by_s"]
+add("1.000, 1.000 and 0.833", f"{f(q['1'])}, {f(q['2'])} and {f(q['3'])}", "eval/qpu.json full_seed0.top1_by_s")
+X1 = EVAL["qpu"]["tests"]["full_seed1_vs_untrained_seed1"]
+X2 = EVAL["qpu"]["tests"]["full_seed2_vs_untrained_seed0"]
+assert not X1["pre_registered"] and not X2["pre_registered"] and X1["pass_gap"] and X1["pass_top1"] and X2["pass_gap"] and X2["pass_top1"]
+add("`full` seeds 1 and 2 retrieve 10/16 and 6/16 on the QPU, against 8/16 and 6/16 on aer",
+    f"`full` seeds 1 and 2 retrieve {hits('qpu','full_seed1',16)}/16 and {hits('qpu','full_seed2',16)}/16 on the QPU, against "
+    f"{hits('aer','full_seed1',16)}/16 and {hits('aer','full_seed2',16)}/16 on aer", "eval/qpu.json, aer.json")
+add("gives sign-flip p = 5.0 × 10^-4^ and binomial p = 5.1 × 10^-9^", f"gives sign-flip p = {sci(X1['signflip_p_gap'])} and binomial p = {sci(X1['top1_binom_p'])}", "eval/qpu.json tests full_seed1")
+add("sign-flip p = 1.6 × 10^-3^ and binomial p = 2.8 × 10^-4^", f"sign-flip p = {sci(X2['signflip_p_gap'])} and binomial p = {sci(X2['top1_binom_p'])}", "eval/qpu.json tests full_seed2")
+assert "untrained_seed2" not in QR and "full_seed3" not in QR
+add("retrieves 2/16 on hardware (1/16 on aer) and `untrained` seed 1 retrieves 1/16",
+    f"retrieves {hits('qpu','no_predictor_seed0',16)}/16 on hardware ({hits('aer','no_predictor_seed0',16)}/16 on aer) and `untrained` seed 1 retrieves {hits('qpu','untrained_seed1',16)}/16",
+    "eval/qpu.json")
+add("two further seeds retrieve 10/16 and 6/16", f"two further seeds retrieve {hits('qpu','full_seed1',16)}/16 and {hits('qpu','full_seed2',16)}/16", "eval/qpu.json (abstract)")
+add("retrieved 10/16 and 6/16", f"retrieved {hits('qpu','full_seed1',16)}/16 and {hits('qpu','full_seed2',16)}/16", "eval/qpu.json (conclusion)")
 
 # ---------------------------------------------------------------- hardware facts
 jid = {j["tag"]: j for j in JOBS}
-add("job `dbso8j9abdes73frdplg`", f"job `{jid['full_seed0']['job_id']}`", "hardware/jobs.json")
-add("job `dbso8jujjaos73aked3g`", f"job `{jid['untrained_seed0']['job_id']}`", "hardware/jobs.json")
-add("job `dbsod0gk09pc73b0ebpg`", f"job `{jid['no_ema_seed0']['job_id']}`", "hardware/jobs.json")
-add("`ibm_marrakesh_20261115T100708+0000_6cc5cc3c`", f"`{SUB1['submission_id']}`", "submission file")
-add("`ibm_marrakesh_20261115T101632+0000_a8e12a16`", f"`{SUB2['submission_id']}`", "submission file")
-add("10:07 UTC", jid["full_seed0"]["submitted_at"][11:16] + " UTC", "jobs.json submitted_at")
-add("10:16 UTC", jid["no_ema_seed0"]["submitted_at"][11:16] + " UTC", "jobs.json submitted_at")
-assert all(j["backend"] == "ibm_marrakesh" and j["shots"] == 1000 and j["n_circuits"] == 432 and j["m"] == 16 for j in JOBS)
+SUBS = {d["submission_id"]: d for d in (load(f"hardware/{p.name}") for p in (RES / "hardware").glob("submission_*.json"))}
+assert len(SUBS) == 4 and len(JOBS) == 7
+for tag in jid:
+    add(f"`{jid[tag]['job_id']}`", f"`{EVAL['qpu']['job_ids'][tag]}`", f"jobs.json vs eval/qpu.json job id {tag}")
+for sid in SUBS:
+    add(f"`{sid}`", f"`{SUBS[sid]['submission_id']}`", "submission file")
+for tag, txt in (("full_seed0", "10:07 UTC"), ("no_ema_seed0", "10:16 UTC"), ("full_seed1", "11:10 UTC"), ("no_predictor_seed0", "11:15 UTC")):
+    add(txt, jid[tag]["submitted_at"][11:16] + " UTC", f"jobs.json submitted_at {tag}")
+assert all(j["backend"] == "ibm_marrakesh" and j["n_circuits"] == 432 and j["m"] == 16 for j in JOBS)
 assert all(j["submitted_at"].startswith("2026-11-15") for j in JOBS)
 add("on 2026-11-15 on `ibm_marrakesh`", f"on {JOBS[0]['submitted_at'][:10]} on `{JOBS[0]['backend']}`", "jobs.json")
-add("1000 shots, which gives 432 circuits per model", f"{JOBS[0]['shots']} shots, which gives {JOBS[0]['n_circuits']} circuits per model", "jobs.json")
+add("i.e. 432 circuits per model", f"i.e. {JOBS[0]['n_circuits']} circuits per model", "jobs.json")
+charge = {t: METRICS[t]["usage"]["qpu_charge_time_seconds"] for t in jid}
+shots = {t: jid[t]["shots"] for t in jid}
+add("10:07 UTC, 1000 shots", f"10:07 UTC, {shots['full_seed0']} shots", "jobs.json shots")
+add("each charged 118 s of QPU time", f"each charged {charge['full_seed0']} s of QPU time" if charge["full_seed0"] == charge["untrained_seed0"] else "?", "job_metrics.json")
+add("1000 shots, job `dbsod0gk09pc73b0ebpg`, 118 s", f"{shots['no_ema_seed0']} shots, job `{jid['no_ema_seed0']['job_id']}`, {charge['no_ema_seed0']} s", "jobs/job_metrics no_ema")
+add("500 shots, jobs `dbsp6b8k09pc73b0fb80` and `dbsp6bok09pc73b0fb90`, 60 s each",
+    f"{shots['full_seed1']} shots, jobs `{jid['full_seed1']['job_id']}` and `{jid['full_seed2']['job_id']}`, {charge['full_seed1']} s each"
+    if (shots["full_seed1"], charge["full_seed1"]) == (shots["full_seed2"], charge["full_seed2"]) else "?", "jobs/job_metrics submission 3")
+add("450 shots, jobs `dbsp8e7v5hds73dj8png` and `dbsp8emjjaos73akfiog`, 55 s each",
+    f"{shots['no_predictor_seed0']} shots, jobs `{jid['no_predictor_seed0']['job_id']}` and `{jid['untrained_seed1']['job_id']}`, {charge['no_predictor_seed0']} s each"
+    if (shots["no_predictor_seed0"], charge["no_predictor_seed0"]) == (shots["untrained_seed1"], charge["untrained_seed1"]) else "?", "jobs/job_metrics submission 4")
+acct = METRICS["account_usage_after"]
+assert sum(charge.values()) == acct["usage_consumed_seconds"]
+add("584 of 600 s were used", f"{acct['usage_consumed_seconds']} of {acct['usage_limit_seconds']} s were used", "job_metrics.json account_usage_after")
+add("1000, 500 or 450 shots depending on the submission",
+    ", ".join(str(s) for s in sorted(set(shots.values()), reverse=True)[:-1]) + f" or {min(shots.values())} shots depending on the submission", "jobs.json shots")
+for t in jid:
+    assert EVAL["qpu"]["runs"][t]["shots"] == shots[t]
 assert jid["no_ema_seed0"]["submitted_at"] > max(METRICS[t]["timestamps"]["finished"].replace("Z", "") for t in ("full_seed0", "untrained_seed0"))
-charge = {METRICS[t]["usage"]["qpu_charge_time_seconds"] for t in ("full_seed0", "untrained_seed0", "no_ema_seed0")}
-add("charged 118 s of QPU time", f"charged {charge.pop() if len(charge) == 1 else '?'} s of QPU time", "hardware/job_metrics.json usage.qpu_charge_time_seconds")
+SUB1 = SUBS["ibm_marrakesh_20261115T100708+0000_6cc5cc3c"]
 cs = SUB1["circuit_stats"]["full_seed0"]
 add("mean depth of 62.6 (maximum 84) and a mean of 21.4 two-qubit gates (maximum 27)",
     f"mean depth of {cs['context']['depth_mean']:.1f} (maximum {cs['context']['depth_max']}) and a mean of {cs['context']['twoq_mean']:.1f} two-qubit gates (maximum {cs['context']['twoq_max']})",
@@ -261,10 +359,11 @@ add("the mean depth is 77.8 (maximum 109) with a mean of 27.0 two-qubit gates (m
 add("48.2 (maximum 68) with a mean of 18.75 two-qubit gates (maximum 24)",
     f"{cs['unadvanced']['depth_mean']:.1f} (maximum {cs['unadvanced']['depth_max']}) with a mean of {cs['unadvanced']['twoq_mean']:.2f} two-qubit gates (maximum {cs['unadvanced']['twoq_max']})",
     "circuit_stats.full_seed0.unadvanced")
-layouts = {tuple(st_["first_layout"]["initial"]) for sub in (SUB1, SUB2) for runs in sub["circuit_stats"].values() for st_ in runs.values()}
-assert len(layouts) == 1
+layouts = {tuple(st_["first_layout"]["initial"]) for sub in SUBS.values() for runs in sub["circuit_stats"].values() for st_ in runs.values()}
+assert len(layouts) == 1 and sum(len(sub["circuit_stats"]) for sub in SUBS.values()) == 7
 layout = list(layouts.pop())
 add("[55, 54, 53, 39, 33]", str(layout), "submission_*.json circuit_stats.*.first_layout.initial")
+add("the same for all seven runs", "the same for all seven runs", "submission_*.json (asserted above)")
 
 # calibration on the layout qubits
 qp = {q: {p["name"]: p["value"] for p in CAL["qubits"][q]} for q in layout}
@@ -281,21 +380,17 @@ for g in CAL["gates"]:
 assert len(cz) == 4
 add("median CZ error on the four couplers of this chain is 0.00176", f"median CZ error on the four couplers of this chain is {st.median(cz.values()):.5f}", "calibration gates cz on layout chain")
 add("`last_update_date` is 2026-11-13 18:22:56+01:00", f"`last_update_date` is {CAL['last_update_date']}", "calibration last_update_date")
-lag = datetime.fromisoformat(JOBS[0]["submitted_at"]) - datetime.fromisoformat(CAL["last_update_date"])
+t_first = min(datetime.fromisoformat(j["submitted_at"]) for j in JOBS)
+lag = t_first - datetime.fromisoformat(CAL["last_update_date"])
 add("about 41 hours before the first job", f"about {round(lag.total_seconds() / 3600)} hours before the first job", "jobs.json vs calibration date")
-# dates of the individual quoted values (T1, T2, readout on the layout qubits; cz on the chain)
 val_dates = [datetime.fromisoformat(p["date"]) for q in layout for p in CAL["qubits"][q]
              if p["name"] in ("T1", "T2", "readout_error")]
 val_dates += [datetime.fromisoformat(p["date"]) for g in CAL["gates"]
               if g["gate"] == "cz" and frozenset(g["qubits"]) in edges
               for p in g["parameters"] if p["name"] == "gate_error"]
-t_first = datetime.fromisoformat(JOBS[0]["submitted_at"])
 lo, hi = (t_first - max(val_dates)).total_seconds() / 3600, (t_first - min(val_dates)).total_seconds() / 3600
-for txt in ("carry dates between {} and {} hours before the first job",):
-    add(txt.format(54, 57), txt.format(int(np.floor(lo)), int(np.ceil(hi))), "calibration per-parameter dates vs jobs.json")
-# snapshot retrieval time: commit that added the file (file mtime is not preserved by git)
-import subprocess  # noqa: E402
-
+add("carry dates between 54 and 57 hours before the first job", f"carry dates between {int(np.floor(lo))} and {int(np.ceil(hi))} hours before the first job",
+    "calibration per-parameter dates vs jobs.json")
 added = subprocess.run(["git", "log", "--diff-filter=A", "--format=%cI", "--", "results/hardware/calibration_ibm_marrakesh.json"],
                        cwd=ROOT, capture_output=True, text=True).stdout.strip().splitlines()[-1]
 t_cal = datetime.fromisoformat(added)
@@ -305,25 +400,19 @@ assert pair_done < t_cal < datetime.fromisoformat(jid["no_ema_seed0"]["submitted
 # preserve it (a fresh clone gets the checkout time), so it is not reliable evidence.
 add("at about 10:13 UTC", f"at about {t_cal.astimezone(t_first.tzinfo):%H:%M} UTC",
     "UPPER BOUND on retrieval time: commit time of the git commit adding calibration_ibm_marrakesh.json")
-# pre-registration commit contains the criterion and precedes the first results commit
+gap_h = (datetime.fromisoformat(jid["full_seed1"]["submitted_at"]) - t_cal).total_seconds() / 3600
+add("about an hour before submissions 3 and 4", "about an hour before submissions 3 and 4" if 0.5 < gap_h < 1.5 else "?", "jobs.json vs calibration commit time")
 show = subprocess.run(["git", "show", "41d5c8b"], cwd=ROOT, capture_output=True, text=True).stdout
 assert "ALPHA_GAP = 0.01" in show and "ALPHA_TOP1 = 0.05" in show and 'pre_registered": seed == "0"' in show
 add("commit `41d5c8b`", "commit `41d5c8b`", "git show 41d5c8b")
-# 41d5c8b must be an ancestor of, and earlier than, the first results commit 29060b3
 anc = subprocess.run(["git", "merge-base", "--is-ancestor", "41d5c8b", "29060b3"], cwd=ROOT).returncode
 ct = lambda c: int(subprocess.run(["git", "show", "-s", "--format=%ct", c], cwd=ROOT, capture_output=True, text=True).stdout)
 assert anc == 0 and ct("41d5c8b") < ct("29060b3"), "pre-registration commit is not before the first results commit"
-# 'short circuits': mean two-qubit counts across branches of the full model
 tq = [cs[b]["twoq_mean"] for b in ("context", "target", "unadvanced")]
 add("on average 19–27 CZ gates after transpilation for `ibm_marrakesh`", f"on average {round(min(tq))}–{round(max(tq))} CZ gates after transpilation for `{SUB1['backend']}`", "circuit_stats.full_seed0.*.twoq_mean")
-add("`no_predictor` seed 0 is also non-retrieving (0/64) with a gap of 0.068",
-    f"`no_predictor` seed 0 is also non-retrieving ({round(R('exact','no_predictor_seed0','top1')*64)}/64) with a gap of {f(R('exact','no_predictor_seed0','diag_gap'))}",
-    "eval/exact.json no_predictor_seed0")
-# layout variation and 2q gate type in a FakeMarrakesh re-transpilation (same pass manager)
 if "--skip-transpile" not in sys.argv:
     import collections  # noqa: E402
 
-    from circuitjepa import experiments as ex  # noqa: E402
     from circuitjepa.hardware import get_backend, transpile  # noqa: E402
 
     _run = ex.load_runs(["full_seed0"])["full_seed0"]
@@ -346,10 +435,8 @@ add("`qiskit-ibm-runtime` 0.52.1", f"`qiskit-ibm-runtime` {pk['qiskit-ibm-runtim
 add("retrieved 15 of 16 targets and met the pre-registered criterion",
     f"retrieved {QT['top1_hits']} of {QT['m']} targets and "
     + ("met" if QT["pass_gap"] and QT["pass_top1"] else "?") + " the pre-registered criterion", "eval/qpu.json tests")
-add("(sign-flip p = 1.0 × 10^-4^, binomial p = 1.3 × 10^-17^). These",
-    f"(sign-flip p = {sci(QT['signflip_p_gap'])}, binomial p = {sci(QT['top1_binom_p'])}). These", "eval/qpu.json tests (conclusion)")
-add("the best of three seeds", "the best of three seeds"
-    if max(range(3), key=lambda s_: R("exact", f"full_seed{s_}", "top1")) == 0 else "?", "eval/exact.json full_seed*.top1")
+add("(sign-flip p = 1.0 × 10^-4^, binomial p = 1.3 × 10^-17^); two", f"(sign-flip p = {sci(QT['signflip_p_gap'])}, binomial p = {sci(QT['top1_binom_p'])}); two",
+    "eval/qpu.json tests (conclusion)")
 
 # ---------------------------------------------------------------- run checks
 bad = 0
