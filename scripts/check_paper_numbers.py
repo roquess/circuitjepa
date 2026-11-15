@@ -29,7 +29,7 @@ def load(rel: str):
 
 
 SUMMARY = load("eval/summary.json")
-EVAL = {b: load(f"eval/{b}.json") for b in ("exact", "aer", "fake_fez", "fake_marrakesh", "qpu")}
+EVAL = {b: load(f"eval/{b}.json") for b in ("exact", "aer", "fake_fez", "fake_marrakesh", "qpu", "exact_heldout", "aer_heldout")}
 JOBS = [json.loads(l) for l in (RES / "hardware/jobs.json").read_text().splitlines() if l.strip()]
 METRICS = load("hardware/job_metrics.json")
 CAL = load("hardware/calibration_ibm_marrakesh.json")
@@ -116,8 +116,7 @@ smax, smin = max(bp, key=bp.get), min(bp, key=bp.get)
 add("binomial p between 3.3 × 10^-3^ for seed 3 and 2.0 × 10^-109^ for seed 9",
     f"binomial p between {sci(bp[smax])} for seed {smax} and {sci(bp[smin])} for seed {smin}", "eval/exact.json tests.*.top1_binom_p")
 add("0.539 ± 0.341 (chance 1/64)", pm(S("exact", "full", "top1")) + " (chance 1/64)", "summary exact.full.top1")
-add("(from 5/64 to 62/64)", f"(from {min(hits('exact', f'full_seed{s}', 64) for s in SEEDS)}/64 to {max(hits('exact', f'full_seed{s}', 64) for s in SEEDS)}/64)",
-    "eval/exact.json full top1 range")
+assert (min(hits('exact', f'full_seed{s}', 64) for s in SEEDS), max(hits('exact', f'full_seed{s}', 64) for s in SEEDS)) == (5, 62)
 add("top-1 ranges from 0.078 to 0.969", f"top-1 ranges from {f(min(ft))} to {f(max(ft))}", "eval/exact.json full_seed*.top1")
 add("1/64 ≈ 0.016", f"1/64 ≈ {f(1/64)}", "chance level")
 order = sorted(SEEDS, key=lambda s: -ft[s])
@@ -142,7 +141,10 @@ add("seeds 7 and 9 retrieve 1 of 64 with gaps of 0.062 and 0.053 and target vari
 assert hits("exact", "no_ema_seed9", 64) == 1
 nef = sum(1 for s in SEEDS if R("exact", f"no_ema_seed{s}", "diag_gap") < 0.07)
 add("2 of 10 `no_ema` seeds ended", f"{nef} of 10 `no_ema` seeds ended", "eval/exact.json no_ema gap < 0.07")
-add("left 2 of 10 seeds near-collapsed", f"left {nef} of 10 seeds near-collapsed", "same (abstract)")
+add("2 of 10 seeds end with near-zero retrieval (1/64), not flagged by the formal collapse criterion",
+    f"{nef} of 10 seeds end with near-zero retrieval ({max(hits('exact', f'no_ema_seed{s}', 64) for s in (7, 9))}/64), not flagged by the formal collapse criterion"
+    if all(hits('exact', f'no_ema_seed{s}', 64) == 1 and R('exact', f'no_ema_seed{s}', 'collapsed') is False for s in (7, 9)) else "?",
+    "eval/exact.json no_ema_seed7/9 (abstract)")
 
 # tuning attempts (results/tuning/attempt*/exact.json)
 def tuning(att: int, var: str) -> str:
@@ -195,12 +197,25 @@ assert [s for s in SEEDS for v in ("full", "no_ema", "no_predictor") if R("exact
 add("its target total variance is 0.720, against 1.158",
     f"its target total variance is {f(R('exact','no_predictor_seed2','total_var'))}, against {f(R('exact','untrained_seed2','total_var'))}",
     "eval/exact.json no_predictor_seed2 / untrained_seed2 total_var")
-add("Its retrieval is 0/64", f"Its retrieval is {hits('exact','no_predictor_seed2',64)}/64", "eval/exact.json")
+add("With 0/64 retrieved", f"With {hits('exact','no_predictor_seed2',64)}/64 retrieved", "eval/exact.json")
 others = [s for s in SEEDS if s != 2 and 0.05 <= R("exact", f"no_predictor_seed{s}", "diag_gap") < 0.07]
 og = [R("exact", f"no_predictor_seed{s}", "diag_gap") for s in others]
-add("Six other `no_predictor` seeds have gaps between 0.059 and 0.068 with at most 3 of 64 retrieved",
-    f"{['Zero','One','Two','Three','Four','Five','Six','Seven'][len(others)]} other `no_predictor` seeds have gaps between {f(min(og))} and {f(max(og))} "
-    f"with at most {max(hits('exact', f'no_predictor_seed{s}', 64) for s in others)} of 64 retrieved", "eval/exact.json no_predictor gaps")
+add("Six other `no_predictor` seeds are near-collapsed, with gaps between 0.059 and 0.068 and at most 3 of 64 retrieved",
+    f"{['Zero','One','Two','Three','Four','Five','Six','Seven'][len(others)]} other `no_predictor` seeds are near-collapsed, with gaps between {f(min(og))} and {f(max(og))} "
+    f"and at most {max(hits('exact', f'no_predictor_seed{s}', 64) for s in others)} of 64 retrieved", "eval/exact.json no_predictor gaps")
+
+# three categories (Section 4): collapse / near-collapse / retrieval failure, exact original test set
+def near(v, s_):
+    r, b = EVAL["exact"]["runs"][f"{v}_seed{s_}"], EVAL["exact"]["runs"][f"untrained_seed{s_}"]
+    return r["collapsed"] is False and r["diag_gap"] < 0.07 and r["total_var"] < 0.75 * b["total_var"]
+NEAR = {v: [s_ for s_ in SEEDS if near(v, s_)] for v in ("full", "no_ema", "no_predictor")}
+assert NEAR == {"full": [], "no_ema": [7, 9], "no_predictor": sorted([2] + others)}, NEAR
+assert all(hits("exact", f"{v}_seed{s_}", 64) <= 3 for v in NEAR for s_ in NEAR[v])  # near-collapsed runs all fail at retrieval
+add("a gap below 0.07 and a target total variance below 75% of the baseline", "a gap below 0.07 and a target total variance below 75% of the baseline",
+    "definition used in near() above")
+add("2 of 10 `no_ema` seeds and seven `no_predictor` seeds are near-collapsed",
+    f"{len(NEAR['no_ema'])} of 10 `no_ema` seeds and {['zero','one','two','three','four','five','six','seven','eight'][len(NEAR['no_predictor'])]} `no_predictor` seeds are near-collapsed",
+    "near-collapse definition on eval/exact.json")
 add("`no_predictor` seed 0 (0/64, gap 0.068)", f"`no_predictor` seed 0 ({hits('exact','no_predictor_seed0',64)}/64, gap {f(R('exact','no_predictor_seed0','diag_gap'))})",
     "eval/exact.json no_predictor_seed0")
 norms = [r["mean_norm"] for r in EVAL["exact"]["runs"].values()]
@@ -442,6 +457,111 @@ add("retrieved 15 of 16 targets and met the pre-registered criterion",
 add("(sign-flip p = 1.0 × 10^-4^, the floor of 10,000 resamples; binomial p = 1.3 × 10^-17^); two",
     f"(sign-flip p = {sci(QT['signflip_p_gap'])}, the floor of 10,000 resamples; binomial p = {sci(QT['top1_binom_p'])}); two",
     "eval/qpu.json tests (conclusion)")
+
+# ---------------------------------------------------------------- held-out test set (exact_heldout, aer_heldout)
+from circuitjepa.config import HELDOUT_TEST_DATA_SEED  # noqa: E402
+
+HO = EVAL["exact_heldout"]
+assert HO["test_data_seed"] == HELDOUT_TEST_DATA_SEED == EVAL["aer_heldout"]["test_data_seed"] and HO["m"] == 64
+assert all(r["config"]["test_data_seed"] != HELDOUT_TEST_DATA_SEED and r["config"]["train_data_seed"] != HELDOUT_TEST_DATA_SEED for r in RUN.values())
+add("with a new data seed, 424242", f"with a new data seed, {HELDOUT_TEST_DATA_SEED}", "circuitjepa/config.py HELDOUT_TEST_DATA_SEED")
+add("--test-data-seed 424242 --tag heldout\ncircuitjepa evaluate --backend aer --test-data-seed 424242",
+    f"--test-data-seed {HELDOUT_TEST_DATA_SEED} --tag heldout\ncircuitjepa evaluate --backend aer --test-data-seed {HELDOUT_TEST_DATA_SEED}", "config (reproducibility)")
+# chronology: the held-out seed was committed before any held-out evaluation file
+t_seed = subprocess.run(["git", "log", "-S", "HELDOUT_TEST_DATA_SEED = 424242", "--format=%H %ct", "--reverse", "--", "circuitjepa/config.py"],
+                        cwd=ROOT, capture_output=True, text=True).stdout.split()
+t_ho = first_add("results/eval/exact_heldout.json")
+assert t_seed and t_ho and int(t_ho[-1]) >= int(t_seed[1])
+assert subprocess.run(["git", "merge-base", "--is-ancestor", t_seed[0], "HEAD"], cwd=ROOT).returncode == 0
+_ho_add = subprocess.run(["git", "log", "--diff-filter=A", "--format=%H", "--", "results/eval/exact_heldout.json"], cwd=ROOT,
+                         capture_output=True, text=True).stdout.split()[-1]
+assert subprocess.run(["git", "merge-base", "--is-ancestor", t_seed[0], _ho_add + "~1"], cwd=ROOT).returncode == 0, "seed commit must precede held-out results"
+cnt_h = [sum(1 for x in make_dataset(64, HELDOUT_TEST_DATA_SEED, 3) if x.s == s_) for s_ in (1, 2, 3)]
+add("It has 21, 23 and 20 samples", f"It has {cnt_h[0]}, {cnt_h[1]} and {cnt_h[2]} samples", "held-out test set")
+for var in ("full", "no_ema", "no_predictor", "untrained"):
+    row = (f"| {var} | {pm(S('exact', var, 'top1'))} | {pm(S('exact_heldout', var, 'top1'))} | "
+           f"{pm(S('exact', var, 'diag_gap'))} | {pm(S('exact_heldout', var, 'diag_gap'))} |")
+    add(row, row, f"summary exact / exact_heldout {var}")
+    assert S("exact_heldout", var, "top1")["n"] == 10
+assert all(r["collapsed"] is False for r in HO["runs"].values())
+add("and 0.530 ± 0.365 on an independent held-out test set never used for any choice (untrained baseline: 0.016 ± 0.019)",
+    f"and {pm(S('exact_heldout','full','top1'))} on an independent held-out test set never used for any choice (untrained baseline: {pm(S('exact_heldout','untrained','top1'))})",
+    "summary exact_heldout (abstract)")
+hh = lambda v, s_: hits("exact_heldout", f"{v}_seed{s_}", 64)
+add("(from 4/64 to 63/64 on the held-out set)", f"(from {min(hh('full', s_) for s_ in SEEDS)}/64 to {max(hh('full', s_) for s_ in SEEDS)}/64 on the held-out set)",
+    "eval/exact_heldout.json full range")
+add("`full` retrieves 58, 22, 7, 4, 31, 34, 50, 62, 8 and 63 of the 64 held-out targets",
+    "`full` retrieves " + ", ".join(str(hh("full", s_)) for s_ in range(9)) + f" and {hh('full', 9)} of the 64 held-out targets", "eval/exact_heldout.json")
+dif = {s_: hh("full", s_) - hits("exact", f"full_seed{s_}", 64) for s_ in SEEDS}
+sw = max(dif, key=lambda k: abs(dif[k]))
+add("within 7 hits of its original-set value for every seed (seed 8: 15 to 8)",
+    f"within {abs(dif[sw])} hits of its original-set value for every seed (seed {sw}: {hits('exact', f'full_seed{sw}', 64)} to {hh('full', sw)})",
+    "eval/exact.json vs exact_heldout.json")
+add("`no_ema` seeds 7 and 9 retrieve 1 and 0 of 64", f"`no_ema` seeds 7 and 9 retrieve {hh('no_ema', 7)} and {hh('no_ema', 9)} of 64", "eval/exact_heldout.json")
+assert SUMMARY["backends"]["aer_heldout"]["_meta"]["m"] == 16 and SUMMARY["backends"]["aer_heldout"]["_meta"]["shots"] == 1000
+add("`full` reaches 0.719 ± 0.291 (chance 1/16)", f"`full` reaches {pm(S('aer_heldout','full','top1'))} (chance 1/16)", "summary aer_heldout.full.top1")
+HT = HO["tests"]
+assert all(t["pass_gap"] and t["pass_top1"] and not t["pre_registered"] and abs(t["signflip_p_gap"] - 1 / 10001) < 1e-15 for t in HT.values()) and len(HT) == 10
+hbp = {s_: HT[f"full_seed{s_}_vs_untrained_seed{s_}"]["top1_binom_p"] for s_ in SEEDS}
+hmax, hmin = max(hbp, key=hbp.get), min(hbp, key=hbp.get)
+add("binomial p between 1.8 × 10^-2^ for seed 3 and 1.0 × 10^-112^ for seed 9",
+    f"binomial p between {sci(hbp[hmax])} for seed {hmax} and {sci(hbp[hmin])} for seed {hmin}", "eval/exact_heldout.json tests")
+hpm = lambda k: pm(S("exact_heldout", "full", k), 4)
+hpu = sum(R("exact_heldout", f"full_seed{s_}", "probe_mse_pred") < R("exact_heldout", f"full_seed{s_}", "probe_mse_unadv") for s_ in SEEDS)
+hmed = lambda v: st.median(R("exact_heldout", f"{v}_seed{s_}", "probe_mse_pred") for s_ in SEEDS)
+add("for `full`, 0.0549 ± 0.0066 from the predicted against 0.0760 ± 0.0224 from the un-advanced embedding, lower in 9 of 10 seeds, and medians of 0.0566 for `no_predictor` against 0.0560 for `full`",
+    f"for `full`, {hpm('probe_mse_pred')} from the predicted against {hpm('probe_mse_unadv')} from the un-advanced embedding, lower in {hpu} of 10 seeds, "
+    f"and medians of {f(hmed('no_predictor'), 4)} for `no_predictor` against {f(hmed('full'), 4)} for `full`", "eval/exact_heldout.json probe")
+add("close to the 0.539 ± 0.341 of the original test set", f"close to the {pm(S('exact','full','top1'))} of the original test set", "summary exact.full.top1 (conclusion)")
+add("the ten `full` seeds reach a top-1 of 0.530 ± 0.365", f"the ten `full` seeds reach a top-1 of {pm(S('exact_heldout','full','top1'))}", "summary exact_heldout (conclusion)")
+
+# ---------------------------------------------------------------- permutation tests, recomputed from the G matrices
+from circuitjepa.metrics import permutation_p  # noqa: E402
+
+PERM = load("permutation_tests.json")
+assert PERM["n_resamples"] == 10000 and PERM["seed"] == 0
+G = lambda be, run: np.asarray(EVAL[be]["runs"][run]["G"])
+def perm(be, a, b=None):
+    r = permutation_p(G(be, a), None if b is None else G(be, b), n_resamples=10000, seed=0)
+    stored = PERM["evals"][be]["paired" if b else "single"][f"{a}_vs_{b}" if b else a]
+    assert r["p_top1"] == stored["p_top1"] and r["p_gap"] == stored["p_gap"], (be, a, b)
+    return r
+FLOOR = 1 / 10001
+pre = perm("qpu", "full_seed0", "untrained_seed0")
+assert PERM["evals"]["qpu"]["paired"]["full_seed0_vs_untrained_seed0"]["pre_registered_pair"]
+add("gives p = 1.0 × 10^-4^ for both the top-1 and the gap difference, the floor",
+    f"gives p = {sci(pre['p_top1'])} for both the top-1 and the gap difference, the floor" if pre["p_top1"] == pre["p_gap"] == FLOOR else "?", "permutation qpu pre-registered pair")
+x1 = perm("qpu", "full_seed1", "untrained_seed1")
+assert x1["p_top1"] == x1["p_gap"] == FLOOR
+x2 = perm("qpu", "full_seed2", "untrained_seed0")
+add("`full` seed 2 against `untrained` seed 0 gives p = 6.0 × 10^-4^ (top-1) and 2.0 × 10^-4^ (gap)",
+    f"`full` seed 2 against `untrained` seed 0 gives p = {sci(x2['p_top1'])} (top-1) and {sci(x2['p_gap'])} (gap)", "permutation qpu full_seed2 vs untrained_seed0")
+u0, u1 = perm("qpu", "untrained_seed0"), perm("qpu", "untrained_seed1")
+add("give top-1 p = 0.64 and 0.65", f"give top-1 p = {u0['p_top1']:.2f} and {u1['p_top1']:.2f}", "permutation qpu untrained single runs")
+EP = {be: {s_: perm(be, f"full_seed{s_}", f"untrained_seed{s_}") for s_ in SEEDS} for be in ("exact", "exact_heldout")}
+assert all(r["p_gap"] == FLOOR for be in EP for r in EP[be].values())
+above = {be: [s_ for s_ in SEEDS if EP[be][s_]["p_top1"] > FLOOR] for be in EP}
+assert above == {"exact": [3], "exact_heldout": [2, 3]}, above
+add("seed 3 on the original set (p = 8.8 × 10^-3^)", f"seed 3 on the original set (p = {sci(EP['exact'][3]['p_top1'])})", "permutation exact full_seed3")
+add("seeds 2 and 3 on the held-out set (7.9 × 10^-3^ and 3.3 × 10^-2^)",
+    f"seeds 2 and 3 on the held-out set ({sci(EP['exact_heldout'][2]['p_top1'])} and {sci(EP['exact_heldout'][3]['p_top1'])})", "permutation exact_heldout")
+add("7.9 × 10^-3^ against 6.5 × 10^-5^ for seed 2 on the held-out set",
+    f"{sci(EP['exact_heldout'][2]['p_top1'])} against {sci(hbp[2])} for seed 2 on the held-out set", "permutation vs binomial, exact_heldout seed 2")
+# every above-floor permutation p is larger than the binomial p of the same pair, and below 0.05
+cmp_ = [(EP["exact"][3]["p_top1"], bp[3]), (EP["exact_heldout"][2]["p_top1"], hbp[2]), (EP["exact_heldout"][3]["p_top1"], hbp[3]),
+        (x2["p_top1"], EVAL["qpu"]["tests"]["full_seed2_vs_untrained_seed0"]["top1_binom_p"])]
+assert all(pp > bb and pp < 0.05 for pp, bb in cmp_)
+add("but all remain below 0.05", "but all remain below 0.05", "asserted above")
+
+# reproducibility: pinned versions
+add("numpy 2.5.4, scipy 1.18.1, matplotlib 3.11.2", f"numpy {pk['numpy']}, scipy {pk['scipy']}, matplotlib {pk['matplotlib']}", "ENVIRONMENT.json")
+cons = (ROOT / "constraints.txt").read_text()
+assert all(f"{k}=={v.split('+')[0]}" in cons for k, v in pk.items())
+rc = re.search(r"results at commit `([0-9a-f]+)`", PAPER).group(1)
+assert subprocess.run(["git", "merge-base", "--is-ancestor", rc, "HEAD"], cwd=ROOT).returncode == 0
+assert not subprocess.run(["git", "diff", "--stat", rc, "HEAD", "--", "results"], cwd=ROOT, capture_output=True, text=True).stdout.strip(), \
+    "results/ changed after the commit quoted in the paper"
+assert "IQM" not in PAPER and "iqm" not in PAPER.lower()
 
 # ---------------------------------------------------------------- run checks
 bad = 0

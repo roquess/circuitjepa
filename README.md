@@ -1,15 +1,18 @@
 # CircuitJEPA
 
-CircuitJEPA is a Joint-Embedding Predictive Architecture (JEPA) in which the
-encoder, the exponential-moving-average (EMA) target encoder and the
-action-conditioned predictor are all parametrized quantum circuits. The data are
+CircuitJEPA is a Joint-Embedding Predictive Architecture (JEPA) whose three
+parametrized components - encoder, exponential-moving-average (EMA) target
+encoder and horizon-conditioned predictor - are parametrized quantum circuits.
+The predictor is conditioned on the prediction horizon (number of Trotter steps),
+not on a control action. Training is classical: exact statevector simulation with
+PyTorch autodiff, a classically computed cosine loss and Adam; embedding readout
+from Pauli measurements is classical post-processing. The data are
 states of a 3-qubit transverse-field Ising chain evolved by Trotter steps. From a
 context state, the model learns, without reconstruction or negative pairs, to
 predict the latent embedding of the state reached 1, 2 or 3 steps later.
 Embeddings are the 15 two-qubit Pauli expectation values of a 2-qubit latent
-register, compared with a cosine similarity. Training is done in exact
-simulation; the trained circuits are evaluated on noiseless and noisy simulators
-and on the IBM Heron QPU `ibm_marrakesh`.
+register, compared with a cosine similarity. The trained circuits are evaluated
+on noiseless and noisy simulators and on the IBM Heron QPU `ibm_marrakesh`.
 
 This is a feasibility demonstration at 5 qubits. It makes no claim of quantum
 advantage or scalability.
@@ -21,17 +24,24 @@ advantage or scalability.
 
 ## Headline results
 
-Held-out retrieval top-1 accuracy and diagonal gap. Exact simulation: 64 test
-samples (chance 1/64), mean ± sample std over seeds 0-9 (seeds 3-9 were added
-after the first results, with the same configuration and no re-tuning). QPU:
-`ibm_marrakesh`, 16 test samples (chance 1/16), no error mitigation.
+Retrieval top-1 accuracy and diagonal gap on test samples. Exact simulation: 64
+test samples (chance 1/64), mean ± sample std over seeds 0-9 (seeds 3-9 were added
+after the first results, with the same configuration and no re-tuning), on the
+original test set (data seed 5678, also used to select the configuration) and on
+the independent held-out test set (data seed 424242, never used for any choice).
+QPU: `ibm_marrakesh`, first 16 samples of the original test set (chance 1/16), no
+error mitigation.
 
 | setting | variant | top-1 | diag. gap |
 |---|---|---|---|
-| exact, 10 seeds | full | 0.539 ± 0.341 | 0.665 ± 0.186 |
-| exact, 10 seeds | no_ema | 0.369 ± 0.332 | 0.486 ± 0.286 |
-| exact, 10 seeds | no_predictor | 0.031 ± 0.040 | 0.116 ± 0.118 |
-| exact, 10 seeds | untrained | 0.008 ± 0.013 | -0.021 ± 0.047 |
+| exact, original test set | full | 0.539 ± 0.341 | 0.665 ± 0.186 |
+| exact, original test set | no_ema | 0.369 ± 0.332 | 0.486 ± 0.286 |
+| exact, original test set | no_predictor | 0.031 ± 0.040 | 0.116 ± 0.118 |
+| exact, original test set | untrained | 0.008 ± 0.013 | -0.021 ± 0.047 |
+| exact, held-out test set | full | 0.530 ± 0.365 | 0.651 ± 0.203 |
+| exact, held-out test set | no_ema | 0.366 ± 0.350 | 0.503 ± 0.273 |
+| exact, held-out test set | no_predictor | 0.053 ± 0.046 | 0.132 ± 0.123 |
+| exact, held-out test set | untrained | 0.016 ± 0.019 | 0.004 ± 0.034 |
 | QPU, seed 0, 1000 shots (pre-registered) | full | 15/16 | 0.827 |
 | QPU, seed 0, 1000 shots (pre-registered) | untrained | 1/16 | 0.033 |
 | QPU, seed 0, 1000 shots | no_ema | 7/16 | 0.455 |
@@ -47,13 +57,22 @@ binomial test gives p = 1.3e-17. The other QPU runs are exploratory (not
 pre-registered); computed the same way, `full` seed 1 vs `untrained` seed 1
 gives p = 5.0e-4 / 5.1e-9, and `full` seed 2 vs `untrained` seed 0 (no seed-2
 baseline was run on the QPU) gives p = 1.6e-3 / 2.8e-4. The seven QPU jobs used
-584 of the 600 s free-tier budget.
+584 of the 600 s free-tier budget. Only the seed-0 pair on the QPU was
+pre-registered; the same tests applied to other seeds or in simulation are
+retrospective and exploratory. A label-permutation test, added after the fact as a
+robustness check (the binomial test assumes independent rows, although rows share
+the same targets), gives p = 1.0e-4 (the floor) for the pre-registered pair
+(`results/permutation_tests.json`).
 
 Caveats: seed variance is large (`full` exact top-1 from 5/64 to 62/64 across
-ten seeds); seed 0, designated for the hardware test before training, turned out
-to be the best of the first three seeds and ties for second of ten; the configuration was chosen on test
-metrics; removing the EMA and the stop-gradient did not cause flagged collapse,
-but 2 of 10 `no_ema` seeds ended near-collapsed; the linear dynamics probe does
+ten seeds); all seeds share the same training and test data, so the spread reflects
+initialization and optimization only; seed 0, designated for the hardware test
+before training, turned out to be the best of the first three seeds and ties for
+second of ten; the configuration was chosen on the original test set (the held-out
+set addresses the reuse of those samples, not the selection itself, and the QPU
+runs remain on the original set); without the EMA and the stop-gradient, 2 of 10
+seeds end with near-zero retrieval (1/64), not flagged by the formal collapse
+criterion; the linear dynamics probe does
 not separate `full` from `no_predictor` (median MSE 0.0480 vs 0.0473), and for
 `no_predictor` seed 5 it blows up (MSE 18.59) because the online and EMA
 encoders differ on two near-constant embedding components. See the paper's
@@ -97,6 +116,10 @@ circuitjepa evaluate --backend exact --jobs 12
 circuitjepa evaluate --backend aer --jobs 12
 circuitjepa evaluate --backend fake_fez --jobs 12
 circuitjepa evaluate --backend fake_marrakesh --jobs 12
+# Independent held-out test set (data seed 424242); the probe is still fitted on the
+# training set; writes results/eval/<backend>_heldout.json
+circuitjepa evaluate --backend exact --test-data-seed 424242 --tag heldout
+circuitjepa evaluate --backend aer --test-data-seed 424242 --tag heldout --jobs 12
 
 # 3. Figures
 circuitjepa figures
@@ -107,6 +130,7 @@ circuitjepa hw-submit --backend ibm_marrakesh             # default runs: full_s
 circuitjepa hw-fetch                                      # fetch the latest submission and evaluate
 python scripts/merge_qpu_eval.py                          # rebuild the paper's merged qpu.json from the committed counts
 python scripts/record_hw_metadata.py                      # job usage + calibration snapshot (reads only)
+python scripts/permutation_tests.py                       # label-permutation tests -> results/permutation_tests.json
 
 # 5. Checks
 python scripts/check_paper_numbers.py                     # paper numbers vs results/
@@ -149,8 +173,8 @@ above 240 s unless `--force` is given.
 
 - `circuitjepa/` - library and CLI (ansatz, model, training, simulation, metrics, hardware, figures)
 - `tests/` - pytest suite
-- `scripts/` - `merge_qpu_eval.py`, `check_paper_numbers.py`, `record_hw_metadata.py`
-- `results/` - trained runs, evaluations per backend, raw QPU counts and metadata (`hardware/jobs.json` is JSON Lines, one job per line), figures, `SUMMARY.md`, `TUNING.md`
+- `scripts/` - `merge_qpu_eval.py`, `permutation_tests.py`, `check_paper_numbers.py`, `record_hw_metadata.py`
+- `results/` - trained runs, evaluations per backend (`*_heldout.json`: independent held-out test set), `permutation_tests.json`, raw QPU counts and metadata (`hardware/jobs.json` is JSON Lines, one job per line), figures, `SUMMARY.md`, `TUNING.md`
 - `paper/` - paper source, bibliography, figures and PDF
 
 ## Citation
