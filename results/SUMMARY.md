@@ -107,3 +107,61 @@ Pre-registered tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1:
 | full_seed1_vs_untrained_seed1 | 16 | 0.0007 | 8/16 | 1.9e-06 | True | True |
 | full_seed2_vs_untrained_seed2 | 16 | 0.0004 | 7/16 | 2.6e-05 | True | True |
 
+## Backend: fake_marrakesh (m = 16, shots = 1000)
+
+| variant | top-1 | diag gap | total var | mean ‖r‖ | collapsed | probe pred | probe unadv | ‖P−I‖ |
+|---|---|---|---|---|---|---|---|---|
+| full | 0.646 ± 0.253 | 0.614 ± 0.212 | 1.314 ± 0.398 | 1.214 ± 0.208 | 0/3 | 0.0406 ± 0.0114 | 0.0723 ± 0.0281 | 0.453 ± 0.330 |
+| no_ema | 0.521 ± 0.321 | 0.579 ± 0.209 | 1.320 ± 0.437 | 1.236 ± 0.191 | 0/3 | 0.0446 ± 0.0037 | 0.0707 ± 0.0343 | 0.523 ± 0.255 |
+| no_predictor | 0.125 ± 0.165 | 0.229 ± 0.189 | 0.624 ± 0.247 | 1.080 ± 0.195 | 0/3 | 0.0977 ± 0.0619 | 0.0722 ± 0.0339 | 0.000 ± 0.000 |
+| untrained | 0.021 ± 0.036 | -0.020 ± 0.040 | 1.074 ± 0.125 | 1.104 ± 0.070 | 0/3 | 0.0671 ± 0.0078 | 0.0766 ± 0.0177 | 0.894 ± 0.095 |
+
+Per time step s:
+
+| variant | s | top-1 | probe pred | probe unadv |
+|---|---|---|---|---|
+| full | 1 | 0.867 ± 0.115 | 0.0171 ± 0.0104 | 0.0248 ± 0.0076 |
+| full | 2 | 0.667 ± 0.306 | 0.0176 ± 0.0094 | 0.0794 ± 0.0436 |
+| full | 3 | 0.444 ± 0.347 | 0.0794 ± 0.0226 | 0.1058 ± 0.0333 |
+| no_ema | 1 | 0.533 ± 0.416 | 0.0250 ± 0.0141 | 0.0268 ± 0.0052 |
+| no_ema | 2 | 0.467 ± 0.306 | 0.0346 ± 0.0079 | 0.0679 ± 0.0401 |
+| no_ema | 3 | 0.556 ± 0.347 | 0.0691 ± 0.0097 | 0.1096 ± 0.0542 |
+| no_predictor | 1 | 0.133 ± 0.231 | 0.0673 ± 0.0664 | 0.0543 ± 0.0464 |
+| no_predictor | 2 | 0.200 ± 0.200 | 0.1149 ± 0.0782 | 0.0642 ± 0.0452 |
+| no_predictor | 3 | 0.056 ± 0.096 | 0.1089 ± 0.0635 | 0.0938 ± 0.0381 |
+| untrained | 1 | 0.000 ± 0.000 | 0.0457 ± 0.0131 | 0.0279 ± 0.0117 |
+| untrained | 2 | 0.000 ± 0.000 | 0.0458 ± 0.0097 | 0.0748 ± 0.0273 |
+| untrained | 3 | 0.056 ± 0.096 | 0.1026 ± 0.0133 | 0.1186 ± 0.0221 |
+
+Pre-registered tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). Seed 0 is the registered pair.
+
+| pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
+|---|---|---|---|---|---|---|
+| full_seed0_vs_untrained_seed0 (registered) | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
+| full_seed1_vs_untrained_seed1 | 16 | 0.0009 | 8/16 | 1.9e-06 | True | True |
+| full_seed2_vs_untrained_seed2 | 16 | 0.0004 | 8/16 | 1.9e-06 | True | True |
+
+## Backend: qpu (m = 16, shots = 1000)
+
+| variant | top-1 | diag gap | total var | mean ‖r‖ | collapsed | probe pred | probe unadv | ‖P−I‖ |
+|---|---|---|---|---|---|---|---|---|
+| full | 0.938 ± 0.000 | 0.827 ± 0.000 | 1.218 ± 0.000 | 1.241 ± 0.000 | 0/1 | 0.0316 ± 0.0000 | 0.0753 ± 0.0000 | 0.273 ± 0.000 |
+| untrained | 0.062 ± 0.000 | 0.033 ± 0.000 | 0.947 ± 0.000 | 1.076 ± 0.000 | 0/1 | 0.0626 ± 0.0000 | 0.0860 ± 0.0000 | 0.783 ± 0.000 |
+
+Per time step s:
+
+| variant | s | top-1 | probe pred | probe unadv |
+|---|---|---|---|---|
+| full | 1 | 1.000 ± 0.000 | 0.0139 ± 0.0000 | 0.0244 ± 0.0000 |
+| full | 2 | 1.000 ± 0.000 | 0.0108 ± 0.0000 | 0.0728 ± 0.0000 |
+| full | 3 | 0.833 ± 0.000 | 0.0637 ± 0.0000 | 0.1197 ± 0.0000 |
+| untrained | 1 | 0.000 ± 0.000 | 0.0337 ± 0.0000 | 0.0442 ± 0.0000 |
+| untrained | 2 | 0.000 ± 0.000 | 0.0378 ± 0.0000 | 0.0850 ± 0.0000 |
+| untrained | 3 | 0.167 ± 0.000 | 0.1073 ± 0.0000 | 0.1215 ± 0.0000 |
+
+Pre-registered tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). Seed 0 is the registered pair.
+
+| pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
+|---|---|---|---|---|---|---|
+| full_seed0_vs_untrained_seed0 (registered) | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
+

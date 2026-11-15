@@ -1,0 +1,13 @@
+{
+ "backend": "ibm_fez",
+ "date": "2026-11-15T09:48:49+00:00",
+ "runs": [
+  "full_seed0",
+  "untrained_seed0"
+ ],
+ "m": 16,
+ "shots": 1000,
+ "n_circuits": 864,
+ "estimated_qpu_seconds": 216.0,
+ "circuit_stats": {}
+}
