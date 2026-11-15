@@ -83,22 +83,65 @@ def get_backend(name: str):
         ) from exc
 
 
-def _isa(circuits: list[QuantumCircuit], backend) -> list[QuantumCircuit]:
-    return generate_preset_pass_manager(optimization_level=3, backend=backend).run(circuits)
+def _isa(
+    circuits: list[QuantumCircuit], backend, seed_transpiler: int | None = 0
+) -> list[QuantumCircuit]:
+    return generate_preset_pass_manager(
+        optimization_level=3, backend=backend, seed_transpiler=seed_transpiler
+    ).run(circuits)
+
+
+def transpile(circuits: list[QuantumCircuit], backend) -> list[QuantumCircuit]:
+    """Deterministic ISA transpilation (optimisation level 3, fixed seed)."""
+    return _isa(circuits, backend)
+
+
+def _two_qubit_count(qc: QuantumCircuit) -> int:
+    return sum(
+        1
+        for inst in qc.data
+        if len(inst.qubits) == 2 and inst.operation.name not in ("barrier", "measure")
+    )
+
+
+def circuit_stats(isa: list[QuantumCircuit]) -> dict:
+    """Depth / two-qubit-gate statistics of transpiled circuits, plus first layout."""
+    depths = [qc.depth() for qc in isa]
+    twoq = [_two_qubit_count(qc) for qc in isa]
+    layout = None
+    if isa and isa[0].layout is not None:
+        lay = isa[0].layout
+        layout = {
+            "initial": [int(q) for q in lay.initial_index_layout(filter_ancillas=True)],
+            "final": [int(q) for q in lay.final_index_layout(filter_ancillas=True)],
+        }
+    return {
+        "n_circuits": len(isa),
+        "depth_mean": float(np.mean(depths)),
+        "depth_max": int(np.max(depths)),
+        "twoq_mean": float(np.mean(twoq)),
+        "twoq_max": int(np.max(twoq)),
+        "first_layout": layout,
+    }
 
 
 def _counts(result) -> list[dict[str, int]]:
     return [dict(pub.data.__getattribute__(_REG).get_counts()) for pub in result]
 
 
-def run_counts(circuits: list[QuantumCircuit], backend, shots: int) -> list[dict[str, int]]:
+def run_counts(
+    circuits: list[QuantumCircuit], backend, shots: int, transpiled: bool = False
+) -> list[dict[str, int]]:
     sampler = SamplerV2(mode=backend)
-    return _counts(sampler.run(_isa(circuits, backend), shots=shots).result())
+    isa = circuits if transpiled else _isa(circuits, backend)
+    return _counts(sampler.run(isa, shots=shots).result())
 
 
-def submit(circuits, backend, shots: int, jobs_file: Path, tag: str) -> str:
+def submit(
+    circuits, backend, shots: int, jobs_file: Path, tag: str, transpiled: bool = False
+) -> str:
     sampler = SamplerV2(mode=backend)
-    job = sampler.run(_isa(circuits, backend), shots=shots)
+    job = sampler.run(circuits if transpiled else _isa(circuits, backend), shots=shots)
     job_id = job.job_id()
     jobs_file = Path(jobs_file)
     jobs_file.parent.mkdir(parents=True, exist_ok=True)
