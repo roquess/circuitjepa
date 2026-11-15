@@ -16,3 +16,14 @@ keywords:
   - self-supervised learning
   - parametrized quantum circuits
   - IBM Quantum
+preferred-citation:
+  type: article
+  title: "CircuitJEPA: a fully circuit-based Joint-Embedding Predictive Architecture for quantum dynamics"
+  authors:
+    - family-names: Roques
+      given-names: Steve
+  year: 2026
+  publisher:
+    name: Zenodo
+  doi: 10.5281/zenodo.24259981
+  url: "https://doi.org/10.5281/zenodo.24259981"

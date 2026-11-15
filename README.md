@@ -1,6 +1,9 @@
 # CircuitJEPA
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24259038.svg)](https://doi.org/10.5281/zenodo.24259038)
+[![Paper DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24259981.svg)](https://doi.org/10.5281/zenodo.24259981)
+
+Paper (preprint, PDF): [zenodo.org/records/24259981](https://zenodo.org/records/24259981/files/circuitjepa.pdf)
 
 CircuitJEPA is a Joint-Embedding Predictive Architecture (JEPA) whose three
 parametrized components - encoder, exponential-moving-average (EMA) target
@@ -181,7 +184,7 @@ above 240 s unless `--force` is given.
 
 ## Citation
 
-Archived on Zenodo: [10.5281/zenodo.24259038](https://doi.org/10.5281/zenodo.24259038) (concept DOI, always resolves to the latest version; v1.0.0 is [10.5281/zenodo.24259039](https://doi.org/10.5281/zenodo.24259039)).
+Paper (preprint): [10.5281/zenodo.24259981](https://doi.org/10.5281/zenodo.24259981). Software and results archived on Zenodo: [10.5281/zenodo.24259038](https://doi.org/10.5281/zenodo.24259038) (concept DOI, always resolves to the latest version; v1.0.0 is [10.5281/zenodo.24259039](https://doi.org/10.5281/zenodo.24259039)).
 
 ```bibtex
 @misc{roques2026circuitjepa,
