@@ -99,6 +99,45 @@ def test_cli_evaluate_exact_smoke(evaluated):
     assert "exact" in summary["backends"]
 
 
+def test_cli_evaluate_heldout_keeps_original(evaluated):
+    ev = Path(evaluated) / "results" / "eval"
+    before = json.loads((ev / "exact.json").read_text())
+    out = _cli(["evaluate", "--backend", "exact", "--test-data-seed", "424242", "--tag", "heldout"], evaluated)
+    assert out.returncode == 0, out.stderr
+    held = json.loads((ev / "exact_heldout.json").read_text())
+    after = json.loads((ev / "exact.json").read_text())
+    assert after == before  # the original evaluation is not touched
+    assert held["test_data_seed"] == 424242 and held["tag"] == "heldout"
+    assert "test_data_seed" not in before and "tag" not in before
+    assert held["runs"]["full_seed0"]["G"] != before["runs"]["full_seed0"]["G"]
+    assert not any(t["pre_registered"] for t in held["tests"].values())
+    summary = json.loads((ev / "summary.json").read_text())
+    assert {"exact", "exact_heldout"} <= set(summary["backends"])
+
+
+def test_cli_evaluate_test_seed_needs_tag(tmp_path):
+    out = _cli(["evaluate", "--backend", "exact", "--test-data-seed", "424242"], tmp_path)
+    assert out.returncode == 2
+    assert "--tag" in out.stderr
+    assert not (tmp_path / "results").exists()
+
+
+def test_heldout_samples_differ_from_original():
+    from circuitjepa.config import HELDOUT_TEST_DATA_SEED
+
+    cfg = TrainConfig("full", 0)
+    train_set, test_set = ex.datasets(cfg)
+    _, held = ex.datasets(cfg, HELDOUT_TEST_DATA_SEED)
+    assert len(held) == len(test_set) == 64
+    assert not {s.a for s in held} & ({s.a for s in test_set} | {s.a for s in train_set})
+    assert ex.first_test_samples(cfg, 16, HELDOUT_TEST_DATA_SEED) == held[:16]
+
+
+def test_sort_backends_puts_heldout_after_its_backend():
+    names = ["qpu", "fake_fez", "exact_heldout", "aer_heldout", "aer", "exact"]
+    assert ex._sort_backends(names) == ["exact", "exact_heldout", "aer", "aer_heldout", "fake_fez", "qpu"]
+
+
 def test_cli_figures_smoke(evaluated):
     out = _cli(["figures"], evaluated)
     assert out.returncode == 0, out.stderr

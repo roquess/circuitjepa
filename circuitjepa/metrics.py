@@ -75,7 +75,55 @@ def signflip_p(
 
 
 def top1_binom_p(k: int, m: int) -> float:
+    """One-sided binomial test of k top-1 hits out of m against chance 1/m.
+
+    Assumes independent rows with equal success probability under H0; rows of G share
+    the same m targets, so this is an approximation (see `permutation_p`)."""
     return float(stats.binomtest(k, m, 1 / m, alternative="greater").pvalue)
+
+
+def permutation_p(
+    G: np.ndarray, G_base: np.ndarray | None = None, n_resamples: int = 10000, seed: int = 0
+) -> dict:
+    """Label-permutation test of top-1 and diagonal gap (one-sided, add-one smoothing).
+
+    H0: predictions are not matched to their own targets. Each resample permutes the
+    target (column) order of G and recomputes top-1 and the diagonal gap. With `G_base`
+    (paired comparison on the same samples), the statistics are the differences
+    model - base and the same column permutation is applied to both matrices.
+    Unlike the binomial test, rows sharing the same targets are not assumed independent.
+    The smallest attainable p is 1 / (n_resamples + 1).
+    """
+    G = np.asarray(G, float)
+    m = G.shape[0]
+    if G_base is not None:
+        G_base = np.asarray(G_base, float)
+        if G_base.shape != G.shape:
+            raise ValueError(f"paired matrices differ in shape: {G.shape} vs {G_base.shape}")
+
+    def stat(cols: np.ndarray) -> tuple[float, float]:
+        t, g = top1(G[:, cols]), diag_gap(G[:, cols])
+        if G_base is not None:
+            t -= top1(G_base[:, cols])
+            g -= diag_gap(G_base[:, cols])
+        return t, g
+
+    obs_t, obs_g = stat(np.arange(m))
+    rng = np.random.default_rng(seed)
+    ge_t = ge_g = 0
+    for _ in range(n_resamples):
+        t, g = stat(rng.permutation(m))
+        ge_t += t >= obs_t - 1e-12
+        ge_g += g >= obs_g - 1e-12
+    return {
+        "top1": obs_t,
+        "diag_gap": obs_g,
+        "p_top1": float((1 + ge_t) / (n_resamples + 1)),
+        "p_gap": float((1 + ge_g) / (n_resamples + 1)),
+        "n_resamples": n_resamples,
+        "seed": seed,
+        "paired": G_base is not None,
+    }
 
 
 

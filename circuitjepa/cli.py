@@ -9,6 +9,7 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 
 from circuitjepa import experiments as ex
+from circuitjepa.config import HELDOUT_TEST_DATA_SEED
 from circuitjepa.hardware import estimate_qpu_seconds
 
 QPU_BUDGET_S = 240.0
@@ -60,6 +61,13 @@ def cmd_evaluate(args) -> int:
             file=sys.stderr,
         )
         return 2
+    if (args.test_data_seed is None) != (args.tag is None):
+        print(
+            "--test-data-seed and --tag go together: an evaluation on another test set is saved "
+            "as results/eval/<backend>_<tag>.json and must not overwrite <backend>.json",
+            file=sys.stderr,
+        )
+        return 2
     runs = ex.load_runs()
     if not runs:
         print("no runs found under results/runs", file=sys.stderr)
@@ -67,11 +75,13 @@ def cmd_evaluate(args) -> int:
     ex.write_environment()
     t0 = time.perf_counter()
     if args.backend == "exact":
-        data = ex.evaluate_exact(runs)
+        data = ex.evaluate_exact(runs, args.test_data_seed)
     else:
-        data = ex.evaluate_shots(runs, args.backend, args.m, args.shots, args.jobs)
+        data = ex.evaluate_shots(runs, args.backend, args.m, args.shots, args.jobs, args.test_data_seed)
     data["wall_seconds"] = time.perf_counter() - t0
-    path = ex.save_eval(args.backend, data)
+    if args.tag is not None:
+        data["tag"] = args.tag
+    path = ex.save_eval(args.backend if args.tag is None else f"{args.backend}_{args.tag}", data)
     print(f"wrote {path} ({data['wall_seconds']:.1f} s)")
     for name, rec in data["runs"].items():
         print(
@@ -340,6 +350,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--m", type=int, default=16, help="test samples for shot-based backends")
     p.add_argument("--shots", type=int, default=1000)
     p.add_argument("--jobs", type=int, default=1, help="parallel processes over runs")
+    p.add_argument("--test-data-seed", dest="test_data_seed", type=int,
+                   help=f"evaluate on another test set (held-out set: {HELDOUT_TEST_DATA_SEED}); "
+                        "the probe is still fitted on the training set; needs --tag")
+    p.add_argument("--tag", choices=[ex.HELDOUT_TAG],
+                   help="save as results/eval/<backend>_<tag>.json (needs --test-data-seed)")
     p.set_defaults(func=cmd_evaluate)
 
     p = sub.add_parser("hw-submit", help="submit tomography circuits to an IBM backend")

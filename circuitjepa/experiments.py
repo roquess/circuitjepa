@@ -44,6 +44,8 @@ N_BASES = 9
 # Pre-registered hardware criterion (design spec, "Hardware protocol").
 ALPHA_GAP = 0.01
 ALPHA_TOP1 = 0.05
+# Suffix of evaluations on the independent held-out test set (config.HELDOUT_TEST_DATA_SEED).
+HELDOUT_TAG = "heldout"
 
 
 def results_dir() -> Path:
@@ -110,15 +112,18 @@ def load_runs(names: list[str] | None = None) -> dict[str, RunResult]:
 # ------------------------------------------------------------------- embeddings
 
 
-def datasets(cfg: TrainConfig) -> tuple[list[Sample], list[Sample]]:
+def datasets(cfg: TrainConfig, test_data_seed: int | None = None) -> tuple[list[Sample], list[Sample]]:
+    """Training and test sets. `test_data_seed` overrides the run's test seed (held-out set)."""
     train_set = make_dataset(cfg.n_train, cfg.train_data_seed, cfg.t0_max)
-    test_set = make_dataset(cfg.n_test, cfg.test_data_seed, cfg.t0_max)
+    seed = cfg.test_data_seed if test_data_seed is None else test_data_seed
+    test_set = make_dataset(cfg.n_test, seed, cfg.t0_max)
     return train_set, test_set
 
 
-def first_test_samples(cfg: TrainConfig, m: int) -> list[Sample]:
+def first_test_samples(cfg: TrainConfig, m: int, test_data_seed: int | None = None) -> list[Sample]:
     """First m test samples (the sample stream does not depend on n_test)."""
-    return make_dataset(m, cfg.test_data_seed, cfg.t0_max)
+    seed = cfg.test_data_seed if test_data_seed is None else test_data_seed
+    return make_dataset(m, seed, cfg.t0_max)
 
 
 def magnetisations(samples: list[Sample], delta: float) -> np.ndarray:
@@ -276,16 +281,20 @@ def _assemble(backend: str, runs: dict[str, RunResult], embs: dict, tests_m: dic
     }
 
 
-def evaluate_exact(runs: dict[str, RunResult]) -> dict:
+def evaluate_exact(runs: dict[str, RunResult], test_data_seed: int | None = None) -> dict:
+    """Exact evaluation on the run's test set, or on another one when `test_data_seed` is given.
+    The dynamics probe is always fitted on the training set."""
     embs, tests_m, wall = {}, {}, {}
     for name, run in runs.items():
         t0 = time.perf_counter()
-        _, test = datasets(run.config)
+        _, test = datasets(run.config, test_data_seed)
         embs[name] = {k: exact_embeddings(run, test, k) for k in KINDS}
         tests_m[name] = test
         wall[name] = time.perf_counter() - t0
     out = _assemble("exact", runs, embs, tests_m, {"wall": wall})
     out["m"] = max(len(t) for t in tests_m.values())
+    if test_data_seed is not None:
+        out["test_data_seed"] = test_data_seed
     return out
 
 
@@ -294,10 +303,11 @@ def sim_seed(name: str) -> int:
     return zlib.crc32(name.encode()) & 0x7FFFFFFF
 
 
-def _shot_one(name: str, run: RunResult, backend_name: str, m: int, shots: int):
+def _shot_one(name: str, run: RunResult, backend_name: str, m: int, shots: int,
+              test_data_seed: int | None = None):
     t0 = time.perf_counter()
     backend = get_backend(backend_name)
-    test = first_test_samples(run.config, m)
+    test = first_test_samples(run.config, m, test_data_seed)
     isa = transpile(run_circuits(run, test), backend)
     stats = stats_by_kind(isa, len(test))
     counts = run_counts(isa, backend, shots, transpiled=True, seed=sim_seed(name))
@@ -305,14 +315,15 @@ def _shot_one(name: str, run: RunResult, backend_name: str, m: int, shots: int):
 
 
 def evaluate_shots(
-    runs: dict[str, RunResult], backend_name: str, m: int, shots: int, jobs: int = 1
+    runs: dict[str, RunResult], backend_name: str, m: int, shots: int, jobs: int = 1,
+    test_data_seed: int | None = None,
 ) -> dict:
     embs, tests_m, wall, stats = {}, {}, {}, {}
-    args = [(name, run, backend_name, m, shots) for name, run in runs.items()]
+    args = [(name, run, backend_name, m, shots, test_data_seed) for name, run in runs.items()]
     def collect(results) -> None:
         for name, emb, st, w in results:
             embs[name], stats[name], wall[name] = emb, st, w
-            tests_m[name] = first_test_samples(runs[name].config, m)
+            tests_m[name] = first_test_samples(runs[name].config, m, test_data_seed)
             print(f"  {name}: {w:.1f} s", flush=True)
 
     if jobs <= 1:
@@ -325,6 +336,8 @@ def evaluate_shots(
     out["m"] = m
     out["shots"] = shots
     out["seed_simulator"] = {n: sim_seed(n) for n in runs}
+    if test_data_seed is not None:
+        out["test_data_seed"] = test_data_seed
     return out
 
 
@@ -394,10 +407,13 @@ BACKEND_ORDER = ("exact", "aer", "qpu")
 
 
 def _sort_backends(names):
+    """exact, aer, fake_*, qpu; a tagged evaluation (e.g. exact_heldout) follows its backend."""
     def key(n):
-        if n in BACKEND_ORDER:
-            return (BACKEND_ORDER.index(n), n)
-        return (1.5, n)
+        base = n.removesuffix(f"_{HELDOUT_TAG}")
+        tagged = base != n
+        if base in BACKEND_ORDER:
+            return (BACKEND_ORDER.index(base), tagged, n)
+        return (1.5, tagged, n)
 
     return sorted(names, key=key)
 

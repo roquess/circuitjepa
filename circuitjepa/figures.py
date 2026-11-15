@@ -105,13 +105,16 @@ def _sim_rows(evals: dict) -> list[tuple[str, list[str | None], str]]:
     return rows
 
 
+SIM_DPI = 200
+
+
 def similarity_matrices(evals: dict) -> Path:
     rows_spec = _sim_rows(evals)
     fig, axes = plt.subplots(
-        len(rows_spec), len(ex.VARIANTS), figsize=(3.0 * len(ex.VARIANTS), 3.0 * len(rows_spec) + 0.4),
+        len(rows_spec), len(ex.VARIANTS), figsize=(3.9 * len(ex.VARIANTS), 3.5 * len(rows_spec) + 0.4),
         squeeze=False,
     )
-    fig.subplots_adjust(top=1 - 0.9 / fig.get_figheight(), hspace=0.45, wspace=0.15)
+    fig.subplots_adjust(top=1 - 1.7 / fig.get_figheight(), hspace=0.6, wspace=0.12)
     im = None
     for i, (be, names, row_label) in enumerate(rows_spec):
         for j in range(len(ex.VARIANTS)):
@@ -126,19 +129,20 @@ def similarity_matrices(evals: dict) -> Path:
             G = np.asarray(rec["G"])
             im = ax.imshow(G, cmap="RdBu_r", vmin=-1, vmax=1, interpolation="nearest")
             ax.set_title(f"{LABELS[var]}" + (f" (seed {seed})" if seed != "0" else "")
-                         + f"\ntop-1 {rec['top1']:.2f}, gap {rec['diag_gap']:.2f}", fontsize=9)
+                         + f"\ntop-1 {rec['top1']:.2f}, gap {rec['diag_gap']:.2f}", fontsize=17)
             ax.set_xticks([])
             ax.set_yticks([])
             if j == 0:
-                ax.set_ylabel(row_label.replace(" (", "\n(", 1) + "\nprediction i", fontsize=8)
+                ax.set_ylabel(row_label.replace(" (", "\n(", 1) + "\nprediction i", fontsize=16)
             if i == len(rows_spec) - 1:
-                ax.set_xlabel("target j", fontsize=9)
+                ax.set_xlabel("target j", fontsize=16)
     if im is not None:
         cb = fig.colorbar(im, ax=axes, shrink=0.8, pad=0.02)
-        cb.set_label("G[i, j] = cos(r_pred,i , s_target,j)")
-    fig.suptitle("Similarity matrices, seed 0 unless noted (diagonal = matching pairs)")
+        cb.set_label("G[i, j] = cos(r_pred,i , s_target,j)", fontsize=17)
+        cb.ax.tick_params(labelsize=15)
+    fig.suptitle("Similarity matrices, seed 0 unless noted (diagonal = matching pairs)", fontsize=20)
     path = _fig_dir() / "similarity_matrices.png"
-    fig.savefig(path, bbox_inches="tight")
+    fig.savefig(path, bbox_inches="tight", dpi=SIM_DPI)
     plt.close(fig)
     return path
 
@@ -179,11 +183,21 @@ def ablation(summary: dict, evals: dict) -> Path:
 PROBE_YMAX = 0.2
 
 
+PROBE_COLS = 3
+PROBE_FONT = 16
+
+
 def dynamics_probe(summary: dict, evals: dict) -> Path:
+    """One panel per backend on a grid (PROBE_COLS wide); the spare cell holds the legend."""
+    from matplotlib.lines import Line2D
+
     bes = ex._sort_backends(summary["backends"])
     off_scale: list[str] = []
-    fig, axes = plt.subplots(1, len(bes), figsize=(4.4 * len(bes), 4.0), squeeze=False, sharey=True)
-    for ax, be in zip(axes[0], bes):
+    n_rows = -(-(len(bes) + 1) // PROBE_COLS)
+    fig, axes = plt.subplots(n_rows, PROBE_COLS, figsize=(4.2 * PROBE_COLS, 3.9 * n_rows),
+                             squeeze=False, sharey=True)
+    flat = axes.ravel()
+    for ax, be in zip(flat, bes):
         rows = summary["backends"][be]
         for vi, var in enumerate(ex.VARIANTS):
             if var not in rows:
@@ -194,34 +208,31 @@ def dynamics_probe(summary: dict, evals: dict) -> Path:
             for kind, ls, mk in (("pred", "-", "o"), ("unadv", "--", "s")):
                 mu = [r[f"probe_mse_{kind}_by_s[{s}]"]["mean"] for s in ss]
                 sd = [r[f"probe_mse_{kind}_by_s[{s}]"]["std"] for s in ss]
-                ax.errorbar(np.array(ss) + dx, mu, yerr=sd, color=COLORS[var], ls=ls, marker=mk, ms=6, lw=1.6,
-                            capsize=2, label=f"{LABELS[var]} — {'predicted' if kind == 'pred' else 'un-advanced'}")
-        for vi, var in enumerate(ex.VARIANTS):  # mark means above the plotted range
-            if var not in rows:
-                continue
-            for k in rows[var]:
-                if k.startswith("probe_mse_") and "_by_s[" in k and rows[var][k]["mean"] > PROBE_YMAX:
+                ax.errorbar(np.array(ss) + dx, mu, yerr=sd, color=COLORS[var], ls=ls, marker=mk, ms=6, lw=1.8,
+                            capsize=2)
+            for k in r:  # mark means above the plotted range
+                if k.startswith("probe_mse_") and "_by_s[" in k and r[k]["mean"] > PROBE_YMAX:
                     s = int(k.split("[")[1].rstrip("]"))
-                    ax.plot(s + (vi - 1.5) * 0.06, PROBE_YMAX * 0.97, marker="^", ms=7, color=COLORS[var],
+                    ax.plot(s + dx, PROBE_YMAX * 0.97, marker="^", ms=9, color=COLORS[var],
                             ls="none", clip_on=False)
-                    off_scale.append(f"{be}: {LABELS[var]}, s={s}, {k.split('_by_s')[0][10:]} "
-                                     f"{rows[var][k]['mean']:.2f}")
+                    off_scale.append(f"{be}: {LABELS[var]}, s={s}, {k.split('_by_s')[0][10:]} {r[k]['mean']:.2f}")
         ax.set_ylim(0, PROBE_YMAX)
         ax.set_xticks([1, 2, 3])
-        ax.set_xlabel("time step s")
-        ax.set_title(_backend_label(be, evals[be]), fontsize=9)
-    axes[0, 0].set_ylabel("probe MSE on ⟨Z_i⟩(t₀+s)")
-    # Collect entries from every panel: no_predictor has no QPU run, so the last panel lacks it.
-    entries = {}
-    for ax in axes[0]:
-        for h, lab in zip(*ax.get_legend_handles_labels()):
-            entries.setdefault(lab, h)
-    axes[0, -1].legend(list(entries.values()), list(entries.keys()), fontsize=7,
-                       loc="upper left", bbox_to_anchor=(1.0, 1.0))
-    title = "Dynamics probe: solid = predicted embedding, dashed = un-advanced context"
+        ax.tick_params(labelsize=PROBE_FONT - 1)
+        ax.set_xlabel("time step s", fontsize=PROBE_FONT)
+        ax.set_title(_backend_label(be, evals[be]).replace(" (", "\n(", 1), fontsize=PROBE_FONT)
+    for ax in axes[:, 0]:
+        ax.set_ylabel("probe MSE on ⟨Z_i⟩(t₀+s)", fontsize=PROBE_FONT)
+    for ax in flat[len(bes):]:
+        ax.axis("off")
+    # Legend: colour = variant, line style = embedding.
+    handles = [Line2D([], [], color=COLORS[v], lw=3, label=LABELS[v]) for v in ex.VARIANTS]
+    handles += [Line2D([], [], color=INK, ls="-", marker="o", label="predicted embedding"),
+                Line2D([], [], color=INK, ls="--", marker="s", label="un-advanced context")]
     if off_scale:
-        title += f"\n▲ = mean above {PROBE_YMAX} (off scale; see results/SUMMARY.md)"
-    fig.suptitle(title)
+        handles.append(Line2D([], [], color=INK, ls="none", marker="^", ms=9, label=f"mean above {PROBE_YMAX}"))
+    flat[len(bes)].legend(handles=handles, loc="center", fontsize=PROBE_FONT, frameon=False)
+    fig.suptitle("Dynamics probe by time step (mean ± std over seeds)", fontsize=PROBE_FONT + 2)
     fig.tight_layout()
     path = _fig_dir() / "dynamics_probe.png"
     fig.savefig(path, bbox_inches="tight")
@@ -231,8 +242,10 @@ def dynamics_probe(summary: dict, evals: dict) -> Path:
 
 def make_all() -> list[Path]:
     runs = ex.load_runs()
-    evals = ex.load_evals()
     summary = ex.write_summary()
+    # Figures show the original test set; held-out evaluations are reported in tables.
+    evals = {k: v for k, v in ex.load_evals().items() if not k.endswith(f"_{ex.HELDOUT_TAG}")}
+    summary = {**summary, "backends": {k: v for k, v in summary["backends"].items() if k in evals}}
     out = [loss_curves(runs)]
     if evals:
         out += [similarity_matrices(evals), ablation(summary, evals), dynamics_probe(summary, evals)]
