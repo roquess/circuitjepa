@@ -4,6 +4,7 @@ import argparse
 import json
 import sys
 import time
+import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 
@@ -124,61 +125,141 @@ def cmd_hw_submit(args) -> int:
         return 0
 
     jobs_file = hw / "jobs.json"
+    stamp = record["date"].replace(":", "").replace("-", "")
+    submission_id = f"{args.backend}_{stamp}_{uuid.uuid4().hex[:8]}"
+    record["submission_id"] = submission_id
+    record["params_hash"] = {name: ex.params_hash(run) for name, run in runs.items()}
     record["job_ids"] = {}
     for name in runs:
-        jid = submit(isa[name], backend, args.shots, jobs_file, tag=name, transpiled=True)
+        extra = {
+            "submission_id": submission_id,
+            "params_hash": record["params_hash"][name],
+            "m": args.m,
+            "submission_runs": list(runs),
+        }
+        jid = submit(isa[name], backend, args.shots, jobs_file, tag=name, transpiled=True, extra=extra)
         record["job_ids"][name] = jid
         print(f"submitted {name}: job {jid}")
-    stamp = record["date"].replace(":", "").replace("-", "")
-    ex.write_json(hw / f"submission_{args.backend}_{stamp}.json", record)
+    ex.write_json(hw / f"submission_{submission_id}.json", record)
+    print(f"submission id: {submission_id}")
     return 0
 
 
-def _job_records() -> dict[str, dict]:
+class FetchRefused(Exception):
+    pass
+
+
+def _job_status(job_id: str) -> str:
+    from qjepa.hardware import job_status
+
+    return job_status(job_id)
+
+
+def _fetch_counts(job_id: str) -> list[dict]:
+    from qjepa.hardware import fetch
+
+    return fetch(job_id)
+
+
+def _submission_records(submission_id: str | None) -> tuple[str, dict[str, dict]]:
+    """Job records of one submission (default: the most recent one), checked for consistency."""
     path = ex.results_dir() / "hardware" / "jobs.json"
     if not path.exists():
-        return {}
-    latest = {}
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            rec = json.loads(line)
-            latest[rec["tag"]] = rec  # later submissions supersede earlier ones
-    return latest
+        raise FetchRefused("no jobs recorded in results/hardware/jobs.json")
+    recs = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    recs = [r for r in recs if r.get("submission_id")]
+    if not recs:
+        raise FetchRefused("no job record carries a submission_id (submitted by an older qjepa?)")
+    if submission_id is None:
+        submission_id = recs[-1]["submission_id"]
+    chosen = [r for r in recs if r["submission_id"] == submission_id]
+    if not chosen:
+        raise FetchRefused(f"unknown submission id {submission_id!r}")
+    by_tag: dict[str, dict] = {}
+    for r in chosen:
+        if r["tag"] in by_tag:
+            raise FetchRefused(f"submission {submission_id} has two jobs for {r['tag']}")
+        by_tag[r["tag"]] = r
+    expected = set(chosen[0].get("submission_runs", []))
+    if expected != set(by_tag):
+        raise FetchRefused(
+            f"submission {submission_id} is incomplete: expected {sorted(expected)}, found {sorted(by_tag)}"
+        )
+    for key in ("backend", "shots", "m", "submission_runs"):
+        values = {json.dumps(r.get(key)) for r in chosen}
+        if len(values) != 1:
+            raise FetchRefused(f"jobs of submission {submission_id} differ in {key}: {sorted(values)}")
+    return submission_id, by_tag
+
+
+def _save_raw(tag: str, rec: dict, counts: list[dict], submission_id: str) -> None:
+    m = rec["m"]
+    index = ex.circuit_index(m)
+    if len(counts) != len(index):
+        raise FetchRefused(f"{tag}: got {len(counts)} results, expected {len(index)}")
+    bloch = ex.blochs_from_counts(counts, m)
+    payload = {
+        "tag": tag,
+        "submission_id": submission_id,
+        "job_id": rec["job_id"],
+        "backend": rec["backend"],
+        "shots": rec["shots"],
+        "m": m,
+        "params_hash": rec["params_hash"],
+        "submitted_at": rec.get("submitted_at"),
+        "fetched_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "circuits": [{**idx, "counts": c} for idx, c in zip(index, counts)],
+        "bloch": {kind: v.tolist() for kind, v in bloch.items()},
+    }
+    ex.write_json(ex.results_dir() / "hardware" / f"counts_{tag}.json", payload, indent=None)
 
 
 def cmd_hw_fetch(args) -> int:
-    recs = _job_records()
-    if not recs:
-        print("no jobs recorded in results/hardware/jobs.json")
+    try:
+        submission_id, recs = _submission_records(args.submission)
+    except FetchRefused as exc:
+        print(f"Refusing to fetch: {exc}")
         return 1
-    from qiskit_ibm_runtime import QiskitRuntimeService
-
-    from qjepa.hardware import fetch
-
-    service = QiskitRuntimeService()
+    print(f"submission: {submission_id}")
     pending = []
     for tag, rec in recs.items():
-        status = service.job(rec["job_id"]).status()
-        status = getattr(status, "name", str(status))
+        status = _job_status(rec["job_id"])
         print(f"{tag}: job {rec['job_id']} {status}")
         if status != "DONE":
             pending.append(tag)
     if pending:
         print(f"not finished yet: {', '.join(pending)}; try again later")
         return 3
+
+    # Persist raw counts and Bloch vectors first: IBM keeps results only for a limited time.
+    counts = {}
+    try:
+        for tag, rec in recs.items():
+            counts[tag] = _fetch_counts(rec["job_id"])
+            _save_raw(tag, rec, counts[tag], submission_id)
+            print(f"saved raw counts for {tag}")
+    except FetchRefused as exc:
+        print(f"Refusing to evaluate: {exc}")
+        return 4
+
     runs = ex.load_runs(list(recs))
-    counts = {tag: fetch(rec["job_id"]) for tag, rec in recs.items()}
-    backends = sorted({rec["backend"] for rec in recs.values()})
-    data = ex.evaluate_from_counts(
-        runs,
-        counts,
-        "qpu",
-        {"job_ids": {t: r["job_id"] for t, r in recs.items()}},
-    )
-    data["backend_name"] = ", ".join(backends)
-    data["shots"] = sorted({rec["shots"] for rec in recs.values()})[0]
-    data["m"] = max(r["m"] for r in data["runs"].values())
+    bad = [t for t, r in recs.items() if ex.params_hash(runs[t]) != r["params_hash"]]
+    if bad:
+        print(
+            "Refusing to evaluate: parameters of "
+            + ", ".join(bad)
+            + " differ from those submitted (params_hash mismatch). Raw counts were saved."
+        )
+        return 5
+
+    first = next(iter(recs.values()))
+    data = ex.evaluate_from_counts(runs, counts, "qpu", {"job_ids": {t: r["job_id"] for t, r in recs.items()}})
+    data["backend_name"] = first["backend"]
+    data["shots"] = first["shots"]
+    data["m"] = first["m"]
+    data["submission_id"] = submission_id
     data["job_ids"] = {t: r["job_id"] for t, r in recs.items()}
+    data["params_hash"] = {t: r["params_hash"] for t, r in recs.items()}
     data["submitted_at"] = {t: r["submitted_at"] for t, r in recs.items()}
     path = ex.save_eval("qpu", data)
     print(f"wrote {path}")
@@ -233,6 +314,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_hw_submit)
 
     p = sub.add_parser("hw-fetch", help="fetch finished hardware jobs and evaluate")
+    p.add_argument("--submission", help="submission id (default: the most recent one)")
     p.set_defaults(func=cmd_hw_fetch)
 
     p = sub.add_parser("figures", help="render figures from results/")

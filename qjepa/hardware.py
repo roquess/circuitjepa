@@ -158,7 +158,13 @@ def run_counts(
 
 
 def submit(
-    circuits, backend, shots: int, jobs_file: Path, tag: str, transpiled: bool = False
+    circuits,
+    backend,
+    shots: int,
+    jobs_file: Path,
+    tag: str,
+    transpiled: bool = False,
+    extra: dict | None = None,
 ) -> str:
     sampler = SamplerV2(mode=backend)
     job = sampler.run(circuits if transpiled else _isa(circuits, backend), shots=shots)
@@ -172,6 +178,7 @@ def submit(
         "shots": shots,
         "n_circuits": len(circuits),
         "submitted_at": datetime.now(timezone.utc).isoformat(),
+        **(extra or {}),
     }
     with jobs_file.open("a", encoding="utf-8") as f:
         f.write(json.dumps(rec) + "\n")
@@ -180,6 +187,11 @@ def submit(
 
 def fetch(job_id: str) -> list[dict[str, int]]:
     return _counts(QiskitRuntimeService().job(job_id).result())
+
+
+def job_status(job_id: str) -> str:
+    status = QiskitRuntimeService().job(job_id).status()
+    return getattr(status, "name", str(status))
 
 
 def measure_embeddings(samples, run, kind: Kind, backend, shots: int) -> np.ndarray:

@@ -9,6 +9,19 @@ so ablation results could not influence the choice. The chosen setting was then 
 all four variants from scratch (`full` reproduced attempt 3 bit-for-bit: training is
 deterministic given the seed).
 
+## Chronology and selection rule
+
+1. Attempt 1 (defaults, all four variants) ran first, on its own. It failed the gate.
+2. With attempt 1's numbers in hand, the settings of attempts 2, 3 and 4 were all chosen
+   up front. The three were then started together as one batch: concurrent processes from
+   a single command, each with its own results directory. Their numbers are labels, not a
+   time order. No attempt was started after attempt 3's outcome was known. In particular,
+   attempt 4 did not run after attempt 3 had passed. All three finished, and their exact
+   evaluations were read together.
+3. Selection rule, fixed before the batch was read: keep a setting that passes the gate.
+   Attempt 3 was the only one that passed, so no tie-break was needed. No further attempt
+   was made after that.
+
 Exact (noiseless, m = 64) test metrics of `full`, seeds 0 / 1 / 2:
 
 | # | change vs defaults | top-1 per seed | top-1 mean ± std | diag gap mean | collapsed | gate |

@@ -1,5 +1,6 @@
 """Experiment orchestration: training runs, backend evaluation, summaries."""
 
+import hashlib
 import json
 import os
 import platform
@@ -7,6 +8,7 @@ import sys
 import time
 import zlib
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from dataclasses import asdict
 from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
@@ -16,6 +18,7 @@ import torch
 
 from qjepa.data import Sample, magnetisation, make_dataset
 from qjepa.hardware import (
+    BASES,
     bloch_from_counts,
     circuit_stats,
     get_backend,
@@ -144,6 +147,27 @@ def run_circuits(run: RunResult, samples: list[Sample]) -> list:
         for smp in samples:
             circs += tomography_circuits(bound_circuit(smp, kind, theta, phi, cfg.delta, use_pred))
     return circs
+
+
+def params_hash(run: RunResult) -> str:
+    """SHA-256 of the trained parameters and config, to pair QPU jobs with their run."""
+    payload = {
+        "theta": run.theta,
+        "theta_bar": run.theta_bar,
+        "phi": run.phi,
+        "config": asdict(run.config),
+    }
+    return hashlib.sha256(json.dumps(payload, sort_keys=True).encode()).hexdigest()
+
+
+def circuit_index(m: int) -> list[dict]:
+    """Mapping circuit index -> (kind, sample, basis), matching run_circuits order."""
+    return [
+        {"index": (k * m + j) * N_BASES + b, "kind": kind, "sample": j, "basis": BASES[b]}
+        for k, kind in enumerate(KINDS)
+        for j in range(m)
+        for b in range(N_BASES)
+    ]
 
 
 def stats_by_kind(isa: list, m: int) -> dict:
