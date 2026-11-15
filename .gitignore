@@ -1,0 +1,8 @@
+docs/superpowers/
+.superpowers/
+.venv/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+results/hardware/*.log
+.playwright-mcp/
