@@ -1,11 +1,11 @@
-"""Evaluation metrics for QJEPA embeddings."""
+"""Evaluation metrics for CircuitJEPA embeddings."""
 
 import numpy as np
 from qiskit.quantum_info import Operator
 from scipy import stats
 
-from qjepa.ansatz import PHI, predictor
-from qjepa.paulis import cosine
+from circuitjepa.ansatz import PHI, predictor
+from circuitjepa.paulis import cosine
 
 
 def similarity_matrix(R: np.ndarray, S: np.ndarray) -> np.ndarray:

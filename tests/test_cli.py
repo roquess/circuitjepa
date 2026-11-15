@@ -7,11 +7,11 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from qjepa import cli
-from qjepa import experiments as ex
-from qjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS
-from qjepa.hardware import get_backend, run_counts
-from qjepa.train import RunResult, TrainConfig, load_run, save_run
+from circuitjepa import cli
+from circuitjepa import experiments as ex
+from circuitjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS
+from circuitjepa.hardware import get_backend, run_counts
+from circuitjepa.train import RunResult, TrainConfig, load_run, save_run
 
 PY = sys.executable
 
@@ -19,11 +19,11 @@ PY = sys.executable
 def _cli(args, cwd, smoke=True):
     env = dict(os.environ)
     if smoke:
-        env["QJEPA_SMOKE"] = "1"
+        env["CIRCUITJEPA_SMOKE"] = "1"
     # Make sure no IBM account could ever be reached from a test.
     env["QISKIT_IBM_TOKEN"] = ""
     return subprocess.run(
-        [PY, "-m", "qjepa.cli", *args],
+        [PY, "-m", "circuitjepa.cli", *args],
         cwd=cwd,
         env=env,
         capture_output=True,
@@ -123,7 +123,7 @@ def _synthetic_run(variant, seed=0):
 @pytest.fixture
 def hw(tmp_path, monkeypatch):
     """Two runs submitted to local Aer; IBM status/fetch replaced by Aer counts."""
-    monkeypatch.setenv("QJEPA_RESULTS", str(tmp_path / "results"))
+    monkeypatch.setenv("CIRCUITJEPA_RESULTS", str(tmp_path / "results"))
     for variant in ("full", "untrained"):
         path = ex.run_path(f"{variant}_seed0")
         path.parent.mkdir(parents=True, exist_ok=True)

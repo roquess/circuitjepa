@@ -1,4 +1,4 @@
-"""Command-line interface: `qjepa train | train-all | evaluate | hw-submit | hw-fetch | figures`."""
+"""Command-line interface: `circuitjepa train | train-all | evaluate | hw-submit | hw-fetch | figures`."""
 
 import argparse
 import json
@@ -8,8 +8,8 @@ import uuid
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from datetime import datetime, timezone
 
-from qjepa import experiments as ex
-from qjepa.hardware import estimate_qpu_seconds
+from circuitjepa import experiments as ex
+from circuitjepa.hardware import estimate_qpu_seconds
 
 QPU_BUDGET_S = 240.0
 DEFAULT_HW_RUNS = ["full_seed0", "untrained_seed0"]
@@ -94,7 +94,7 @@ def cmd_hw_submit(args) -> int:
         )
         return 2
 
-    from qjepa.hardware import get_backend, submit, transpile
+    from circuitjepa.hardware import get_backend, submit, transpile
 
     stats, isa = {}, {}
     if _is_simulated(args.backend) or not args.dry_run:
@@ -150,13 +150,13 @@ class FetchRefused(Exception):
 
 
 def _job_status(job_id: str) -> str:
-    from qjepa.hardware import job_status
+    from circuitjepa.hardware import job_status
 
     return job_status(job_id)
 
 
 def _fetch_counts(job_id: str) -> list[dict]:
-    from qjepa.hardware import fetch
+    from circuitjepa.hardware import fetch
 
     return fetch(job_id)
 
@@ -169,7 +169,7 @@ def _submission_records(submission_id: str | None) -> tuple[str, dict[str, dict]
     recs = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
     recs = [r for r in recs if r.get("submission_id")]
     if not recs:
-        raise FetchRefused("no job record carries a submission_id (submitted by an older qjepa?)")
+        raise FetchRefused("no job record carries a submission_id (submitted by an older circuitjepa?)")
     if submission_id is None:
         submission_id = recs[-1]["submission_id"]
     chosen = [r for r in recs if r["submission_id"] == submission_id]
@@ -268,7 +268,7 @@ def cmd_hw_fetch(args) -> int:
 
 
 def cmd_figures(args) -> int:
-    from qjepa.figures import make_all
+    from circuitjepa.figures import make_all
 
     for p in make_all():
         print(f"wrote {p}")
@@ -281,7 +281,7 @@ def cmd_env(args) -> int:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    ap = argparse.ArgumentParser(prog="qjepa", description=__doc__)
+    ap = argparse.ArgumentParser(prog="circuitjepa", description=__doc__)
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     p = sub.add_parser("train", help="train one run")

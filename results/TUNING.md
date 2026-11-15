@@ -42,7 +42,7 @@ competitive; this is reported, not tuned against.
 lr = 0.02 (Adam), 150 epochs, τ = 0.99, batch 32, n_train = 256, n_test = 64,
 train data seed 1234, test data seed 5678, model seeds 0, 1, 2.
 
-Command: `qjepa train-all --jobs 12 --delta 0.5`.
+Command: `circuitjepa train-all --jobs 12 --delta 0.5`.
 
 ## Caveats
 

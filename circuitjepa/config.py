@@ -1,4 +1,4 @@
-"""Global constants for the QJEPA experiments."""
+"""Global constants for the CircuitJEPA experiments."""
 
 N_DATA = 3
 N_ANC = 2

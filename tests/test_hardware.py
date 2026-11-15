@@ -6,10 +6,10 @@ import pytest
 import torch
 from qiskit.quantum_info import random_density_matrix
 
-from qjepa import hardware
-from qjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS
-from qjepa.data import make_dataset
-from qjepa.hardware import (
+from circuitjepa import hardware
+from circuitjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS
+from circuitjepa.data import make_dataset
+from circuitjepa.hardware import (
     BASES,
     bloch_from_counts,
     estimate_qpu_seconds,
@@ -18,9 +18,9 @@ from qjepa.hardware import (
     submit,
     tomography_circuits,
 )
-from qjepa.model import bound_circuit, embed
-from qjepa.paulis import bloch_vector
-from qjepa.train import RunResult, TrainConfig
+from circuitjepa.model import bound_circuit, embed
+from circuitjepa.paulis import bloch_vector
+from circuitjepa.train import RunResult, TrainConfig
 
 
 def test_bases():

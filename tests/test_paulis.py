@@ -1,8 +1,8 @@
 import numpy as np
 import torch
 
-from qjepa.paulis import PAULI_LABELS, PAULI_MATS, bloch_vector, cosine
-from qjepa.sim import cosine_torch
+from circuitjepa.paulis import PAULI_LABELS, PAULI_MATS, bloch_vector, cosine
+from circuitjepa.sim import cosine_torch
 
 
 def _random_rho(rng):

@@ -1,7 +1,7 @@
 import numpy as np
 import torch
 
-from qjepa.train import RunResult, TrainConfig, ema_update, load_run, loss_fn, save_run, train
+from circuitjepa.train import RunResult, TrainConfig, ema_update, load_run, loss_fn, save_run, train
 
 
 def test_loss_perfect_and_opposite():

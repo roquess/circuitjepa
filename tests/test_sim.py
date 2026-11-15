@@ -5,7 +5,7 @@ from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter
 from qiskit.quantum_info import Statevector, partial_trace
 
-from qjepa.sim import latent_rho, simulate
+from circuitjepa.sim import latent_rho, simulate
 
 
 def _random_circuit(seed, n=5, n_gates=40):

@@ -8,7 +8,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 
-from qjepa import experiments as ex  # noqa: E402
+from circuitjepa import experiments as ex  # noqa: E402
 
 # Fixed categorical order: colour follows the variant everywhere.
 COLORS = {

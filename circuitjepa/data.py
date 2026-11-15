@@ -8,7 +8,7 @@ from qiskit import QuantumCircuit
 from qiskit.circuit import Parameter, ParameterVector
 from qiskit.quantum_info import Statevector
 
-from qjepa.config import H_FIELD, J, N_DATA, N_QUBITS, STEPS
+from circuitjepa.config import H_FIELD, J, N_DATA, N_QUBITS, STEPS
 
 A = ParameterVector("a", 3)
 B = ParameterVector("b", 3)

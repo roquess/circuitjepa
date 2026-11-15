@@ -1,4 +1,4 @@
-"""QJEPA training loop with ablation variants."""
+"""CircuitJEPA training loop with ablation variants."""
 
 import json
 import math
@@ -9,10 +9,10 @@ from typing import Literal
 
 import torch
 
-from qjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS
-from qjepa.data import make_dataset
-from qjepa.model import embed
-from qjepa.sim import cosine_torch
+from circuitjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS
+from circuitjepa.data import make_dataset
+from circuitjepa.model import embed
+from circuitjepa.sim import cosine_torch
 
 Variant = Literal["full", "no_ema", "no_predictor", "untrained"]
 

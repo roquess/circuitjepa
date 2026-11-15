@@ -1,4 +1,4 @@
-"""QJEPA circuit templates, batched differentiable embedding, bound circuits."""
+"""CircuitJEPA circuit templates, batched differentiable embedding, bound circuits."""
 
 from functools import lru_cache
 from typing import Literal
@@ -7,10 +7,10 @@ import numpy as np
 import torch
 from qiskit import QuantumCircuit
 
-from qjepa.ansatz import PHI, THETA, encoder, predictor
-from qjepa.config import LATENT
-from qjepa.data import A, B, Sample, data_values, prep_circuit, trotter_step
-from qjepa.sim import bloch_torch, latent_rho, simulate
+from circuitjepa.ansatz import PHI, THETA, encoder, predictor
+from circuitjepa.config import LATENT
+from circuitjepa.data import A, B, Sample, data_values, prep_circuit, trotter_step
+from circuitjepa.sim import bloch_torch, latent_rho, simulate
 
 Kind = Literal["context", "target", "unadvanced"]
 

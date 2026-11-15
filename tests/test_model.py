@@ -2,10 +2,10 @@ import numpy as np
 import torch
 from qiskit.quantum_info import Statevector, partial_trace
 
-from qjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS, encoder, predictor
-from qjepa.data import Sample, make_dataset
-from qjepa.model import bound_circuit, embed
-from qjepa.paulis import bloch_vector
+from circuitjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS, encoder, predictor
+from circuitjepa.data import Sample, make_dataset
+from circuitjepa.model import bound_circuit, embed
+from circuitjepa.paulis import bloch_vector
 
 DELTA = 0.3
 

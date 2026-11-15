@@ -9,8 +9,8 @@ import numpy as np
 import torch
 from qiskit.circuit import Parameter, ParameterExpression, QuantumCircuit
 
-from qjepa.config import LATENT
-from qjepa.paulis import PAULI_MATS
+from circuitjepa.config import LATENT
+from circuitjepa.paulis import PAULI_MATS
 
 _CDTYPE = torch.complex128
 _RDTYPE = torch.float64
@@ -104,7 +104,7 @@ def bloch_torch(rho: torch.Tensor) -> torch.Tensor:
 
 
 def cosine_torch(r: torch.Tensor, s: torch.Tensor, eps: float = 1e-8) -> torch.Tensor:
-    """Torch twin of ``qjepa.paulis.cosine`` (same smoothed norm)."""
+    """Torch twin of ``circuitjepa.paulis.cosine`` (same smoothed norm)."""
     num = (r * s).sum(-1)
     nr = torch.sqrt((r * r).sum(-1) + eps**2)
     ns = torch.sqrt((s * s).sum(-1) + eps**2)

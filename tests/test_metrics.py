@@ -1,6 +1,6 @@
 import numpy as np
 
-from qjepa.metrics import (
+from circuitjepa.metrics import (
     diag_gap,
     fit_probe,
     is_collapsed,

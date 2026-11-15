@@ -16,8 +16,8 @@ from pathlib import Path
 import numpy as np
 import torch
 
-from qjepa.data import Sample, magnetisation, make_dataset
-from qjepa.hardware import (
+from circuitjepa.data import Sample, magnetisation, make_dataset
+from circuitjepa.hardware import (
     BASES,
     bloch_from_counts,
     circuit_stats,
@@ -26,7 +26,7 @@ from qjepa.hardware import (
     tomography_circuits,
     transpile,
 )
-from qjepa.metrics import (
+from circuitjepa.metrics import (
     evaluate_embeddings,
     predictor_distance,
     row_gaps,
@@ -35,8 +35,8 @@ from qjepa.metrics import (
     top1_binom_p,
     total_variance,
 )
-from qjepa.model import bound_circuit, embed
-from qjepa.train import RunResult, TrainConfig, load_run, save_run, train
+from circuitjepa.model import bound_circuit, embed
+from circuitjepa.train import RunResult, TrainConfig, load_run, save_run, train
 
 VARIANTS = ("full", "no_ema", "no_predictor", "untrained")
 KINDS = ("context", "target", "unadvanced")
@@ -47,11 +47,11 @@ ALPHA_TOP1 = 0.05
 
 
 def results_dir() -> Path:
-    return Path(os.environ.get("QJEPA_RESULTS", "results"))
+    return Path(os.environ.get("CIRCUITJEPA_RESULTS", "results"))
 
 
 def is_smoke() -> bool:
-    return os.environ.get("QJEPA_SMOKE", "") == "1"
+    return os.environ.get("CIRCUITJEPA_SMOKE", "") == "1"
 
 
 def run_name(variant: str, seed: int) -> str:
@@ -401,7 +401,7 @@ def _pm(cell: dict, fmt: str = "{:.3f}") -> str:
 
 def summary_markdown(summary: dict) -> str:
     lines = [
-        "# QJEPA results summary",
+        "# CircuitJEPA results summary",
         "",
         "Mean ± sample std (ddof=1) over seeds. `collapsed` = number of seeds flagged collapsed",
         "(diag gap < 0.05 and target total variance < 5 % of the same-seed untrained baseline).",

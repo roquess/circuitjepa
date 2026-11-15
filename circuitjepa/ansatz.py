@@ -3,7 +3,7 @@
 from qiskit import QuantumCircuit
 from qiskit.circuit import ParameterVector
 
-from qjepa.config import LATENT, N_QUBITS
+from circuitjepa.config import LATENT, N_QUBITS
 
 ENC_LAYERS = 3
 PRED_LAYERS = 2

@@ -2,8 +2,8 @@ import numpy as np
 import scipy.linalg
 from qiskit.quantum_info import SparsePauliOp, Statevector
 
-from qjepa.config import H_FIELD, J, STEPS
-from qjepa.data import (
+from circuitjepa.config import H_FIELD, J, STEPS
+from circuitjepa.data import (
     A,
     B,
     Sample,

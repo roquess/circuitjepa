@@ -1,4 +1,4 @@
-# QJEPA results summary
+# CircuitJEPA results summary
 
 Mean ± sample std (ddof=1) over seeds. `collapsed` = number of seeds flagged collapsed
 (diag gap < 0.05 and target total variance < 5 % of the same-seed untrained baseline).

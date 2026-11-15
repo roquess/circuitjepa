@@ -10,9 +10,9 @@ from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
 from qiskit_aer import AerSimulator
 from qiskit_ibm_runtime import QiskitRuntimeService, SamplerV2
 
-from qjepa.config import LATENT
-from qjepa.model import Kind, bound_circuit
-from qjepa.paulis import PAULI_LABELS
+from circuitjepa.config import LATENT
+from circuitjepa.model import Kind, bound_circuit
+from circuitjepa.paulis import PAULI_LABELS
 
 # Qiskit convention: the rightmost character is latent qubit 0.
 BASES: list[str] = [a + b for a in "XYZ" for b in "XYZ"]

@@ -1,9 +1,9 @@
 import numpy as np
 
-from qjepa import experiments as ex
-from qjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS
-from qjepa.hardware import get_backend, run_counts
-from qjepa.train import RunResult, TrainConfig
+from circuitjepa import experiments as ex
+from circuitjepa.ansatz import N_ENC_PARAMS, N_PRED_PARAMS
+from circuitjepa.hardware import get_backend, run_counts
+from circuitjepa.train import RunResult, TrainConfig
 
 
 def _run(variant, seed):
