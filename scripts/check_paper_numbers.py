@@ -302,11 +302,18 @@ added = subprocess.run(["git", "log", "--diff-filter=A", "--format=%cI", "--", "
 t_cal = datetime.fromisoformat(added)
 pair_done = max(datetime.fromisoformat(METRICS[t]["timestamps"]["finished"].replace("Z", "+00:00")) for t in ("full_seed0", "untrained_seed0"))
 assert pair_done < t_cal < datetime.fromisoformat(jid["no_ema_seed0"]["submitted_at"])
-add("at about 10:13 UTC", f"at about {t_cal.astimezone(t_first.tzinfo):%H:%M} UTC", "git commit adding calibration_ibm_marrakesh.json (upper bound of retrieval time)")
+# Upper bound only: the commit time of the file. The file mtime is not used because git does not
+# preserve it (a fresh clone gets the checkout time), so it is not reliable evidence.
+add("at about 10:13 UTC", f"at about {t_cal.astimezone(t_first.tzinfo):%H:%M} UTC",
+    "UPPER BOUND on retrieval time: commit time of the git commit adding calibration_ibm_marrakesh.json")
 # pre-registration commit contains the criterion and precedes the first results commit
 show = subprocess.run(["git", "show", "41d5c8b"], cwd=ROOT, capture_output=True, text=True).stdout
 assert "ALPHA_GAP = 0.01" in show and "ALPHA_TOP1 = 0.05" in show and 'pre_registered": seed == "0"' in show
 add("(commit `41d5c8b`)", "(commit `41d5c8b`)", "git show 41d5c8b")
+# 41d5c8b must be an ancestor of, and earlier than, the first results commit 29060b3
+anc = subprocess.run(["git", "merge-base", "--is-ancestor", "41d5c8b", "29060b3"], cwd=ROOT).returncode
+ct = lambda c: int(subprocess.run(["git", "show", "-s", "--format=%ct", c], cwd=ROOT, capture_output=True, text=True).stdout)
+assert anc == 0 and ct("41d5c8b") < ct("29060b3"), "pre-registration commit is not before the first results commit"
 # 'short circuits': mean two-qubit counts across branches of the full model
 tq = [cs[b]["twoq_mean"] for b in ("context", "target", "unadvanced")]
 add("on average 19–27 CZ gates", f"on average {round(min(tq))}–{round(max(tq))} CZ gates", "circuit_stats.full_seed0.*.twoq_mean")
