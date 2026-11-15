@@ -46,6 +46,47 @@ Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs ch
 | full_seed8_vs_untrained_seed8 | 64 | 0.0001 | 15/64 | 6.3e-14 | True | True |
 | full_seed9_vs_untrained_seed9 | 64 | 0.0001 | 62/64 | 2e-109 | True | True |
 
+## Backend: exact_heldout (m = 64)
+
+| variant | top-1 | diag gap | total var | mean ‖r‖ | collapsed | probe pred | probe unadv | ‖P−I‖ |
+|---|---|---|---|---|---|---|---|---|
+| full | 0.530 ± 0.365 | 0.651 ± 0.203 | 1.596 ± 0.374 | 1.245 ± 0.191 | 0/10 | 0.0549 ± 0.0066 | 0.0760 ± 0.0224 | 0.461 ± 0.259 |
+| no_ema | 0.366 ± 0.350 | 0.503 ± 0.273 | 1.298 ± 0.510 | 1.249 ± 0.123 | 0/10 | 0.0617 ± 0.0093 | 0.0731 ± 0.0237 | 0.639 ± 0.273 |
+| no_predictor | 0.053 ± 0.046 | 0.132 ± 0.123 | 0.686 ± 0.373 | 1.193 ± 0.100 | 0/10 | 1.8912 ± 5.7979 | 1.8912 ± 5.7979 | 0.000 ± 0.000 |
+| untrained | 0.016 ± 0.019 | 0.004 ± 0.034 | 1.369 ± 0.184 | 1.215 ± 0.065 | 0/10 | 0.0871 ± 0.0095 | 0.0821 ± 0.0169 | 0.836 ± 0.086 |
+
+Per time step s:
+
+| variant | s | top-1 | probe pred | probe unadv |
+|---|---|---|---|---|
+| full | 1 | 0.633 ± 0.387 | 0.0745 ± 0.0143 | 0.0815 ± 0.0055 |
+| full | 2 | 0.522 ± 0.389 | 0.0432 ± 0.0108 | 0.0785 ± 0.0352 |
+| full | 3 | 0.430 ± 0.422 | 0.0479 ± 0.0067 | 0.0674 ± 0.0350 |
+| no_ema | 1 | 0.424 ± 0.418 | 0.0827 ± 0.0188 | 0.0769 ± 0.0096 |
+| no_ema | 2 | 0.317 ± 0.388 | 0.0508 ± 0.0135 | 0.0707 ± 0.0341 |
+| no_ema | 3 | 0.360 ± 0.367 | 0.0523 ± 0.0125 | 0.0719 ± 0.0382 |
+| no_predictor | 1 | 0.105 ± 0.107 | 1.8531 ± 5.5940 | 1.8531 ± 5.5940 |
+| no_predictor | 2 | 0.030 ± 0.041 | 1.9333 ± 5.9713 | 1.9333 ± 5.9713 |
+| no_predictor | 3 | 0.025 ± 0.026 | 1.8828 ± 5.8128 | 1.8828 ± 5.8128 |
+| untrained | 1 | 0.005 ± 0.015 | 0.1188 ± 0.0201 | 0.0688 ± 0.0092 |
+| untrained | 2 | 0.030 ± 0.046 | 0.0681 ± 0.0115 | 0.0940 ± 0.0282 |
+| untrained | 3 | 0.010 ± 0.021 | 0.0756 ± 0.0145 | 0.0824 ± 0.0239 |
+
+Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). The criterion was pre-registered for the seed-0 pair on the QPU only; all other tests are exploratory. p = 0.0001 is the floor of 10,000 sign-flip resamples.
+
+| pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
+|---|---|---|---|---|---|---|
+| full_seed0_vs_untrained_seed0 | 64 | 0.0001 | 58/64 | 1.2e-97 | True | True |
+| full_seed1_vs_untrained_seed1 | 64 | 0.0001 | 22/64 | 7.8e-24 | True | True |
+| full_seed2_vs_untrained_seed2 | 64 | 0.0001 | 7/64 | 6.5e-05 | True | True |
+| full_seed3_vs_untrained_seed3 | 64 | 0.0001 | 4/64 | 0.018 | True | True |
+| full_seed4_vs_untrained_seed4 | 64 | 0.0001 | 31/64 | 1.1e-38 | True | True |
+| full_seed5_vs_untrained_seed5 | 64 | 0.0001 | 34/64 | 4e-44 | True | True |
+| full_seed6_vs_untrained_seed6 | 64 | 0.0001 | 50/64 | 1.9e-77 | True | True |
+| full_seed7_vs_untrained_seed7 | 64 | 0.0001 | 62/64 | 2e-109 | True | True |
+| full_seed8_vs_untrained_seed8 | 64 | 0.0001 | 8/64 | 7.2e-06 | True | True |
+| full_seed9_vs_untrained_seed9 | 64 | 0.0001 | 63/64 | 1e-112 | True | True |
+
 ## Backend: aer (m = 16, shots = 1000)
 
 | variant | top-1 | diag gap | total var | mean ‖r‖ | collapsed | probe pred | probe unadv | ‖P−I‖ |
@@ -86,6 +127,47 @@ Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs ch
 | full_seed7_vs_untrained_seed7 | 16 | 0.0001 | 16/16 | 5.4e-20 | True | True |
 | full_seed8_vs_untrained_seed8 | 16 | 0.0009 | 6/16 | 0.00028 | True | True |
 | full_seed9_vs_untrained_seed9 | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
+
+## Backend: aer_heldout (m = 16, shots = 1000)
+
+| variant | top-1 | diag gap | total var | mean ‖r‖ | collapsed | probe pred | probe unadv | ‖P−I‖ |
+|---|---|---|---|---|---|---|---|---|
+| full | 0.719 ± 0.291 | 0.705 ± 0.190 | 1.546 ± 0.433 | 1.277 ± 0.189 | 0/10 | 0.0649 ± 0.0169 | 0.0783 ± 0.0104 | 0.461 ± 0.259 |
+| no_ema | 0.519 ± 0.344 | 0.549 ± 0.272 | 1.244 ± 0.534 | 1.230 ± 0.119 | 0/10 | 0.0752 ± 0.0179 | 0.0702 ± 0.0116 | 0.639 ± 0.273 |
+| no_predictor | 0.113 ± 0.109 | 0.082 ± 0.151 | 0.682 ± 0.319 | 1.209 ± 0.102 | 0/10 | 1.9354 ± 5.7705 | 2.0059 ± 5.9535 | 0.000 ± 0.000 |
+| untrained | 0.056 ± 0.046 | -0.006 ± 0.043 | 1.346 ± 0.185 | 1.196 ± 0.060 | 0/10 | 0.1017 ± 0.0132 | 0.0694 ± 0.0105 | 0.836 ± 0.086 |
+
+Per time step s:
+
+| variant | s | top-1 | probe pred | probe unadv |
+|---|---|---|---|---|
+| full | 1 | 0.771 ± 0.279 | 0.0894 ± 0.0291 | 0.0919 ± 0.0162 |
+| full | 2 | 0.700 ± 0.369 | 0.0538 ± 0.0219 | 0.0703 ± 0.0206 |
+| full | 3 | 0.660 ± 0.353 | 0.0394 ± 0.0117 | 0.0658 ± 0.0383 |
+| no_ema | 1 | 0.486 ± 0.376 | 0.0992 ± 0.0263 | 0.0832 ± 0.0135 |
+| no_ema | 2 | 0.500 ± 0.391 | 0.0673 ± 0.0279 | 0.0554 ± 0.0080 |
+| no_ema | 3 | 0.580 ± 0.394 | 0.0478 ± 0.0166 | 0.0637 ± 0.0401 |
+| no_predictor | 1 | 0.114 ± 0.188 | 1.9826 ± 5.8481 | 2.3098 ± 6.8312 |
+| no_predictor | 2 | 0.175 ± 0.206 | 1.9286 ± 5.7621 | 1.9670 ± 5.8796 |
+| no_predictor | 3 | 0.060 ± 0.097 | 1.8748 ± 5.6686 | 1.6116 ± 4.7844 |
+| untrained | 1 | 0.057 ± 0.074 | 0.1406 ± 0.0160 | 0.0736 ± 0.0143 |
+| untrained | 2 | 0.100 ± 0.175 | 0.0787 ± 0.0224 | 0.0616 ± 0.0174 |
+| untrained | 3 | 0.020 ± 0.063 | 0.0655 ± 0.0164 | 0.0698 ± 0.0236 |
+
+Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). The criterion was pre-registered for the seed-0 pair on the QPU only; all other tests are exploratory. p = 0.0001 is the floor of 10,000 sign-flip resamples.
+
+| pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
+|---|---|---|---|---|---|---|
+| full_seed0_vs_untrained_seed0 | 16 | 0.0001 | 16/16 | 5.4e-20 | True | True |
+| full_seed1_vs_untrained_seed1 | 16 | 0.0001 | 11/16 | 1.8e-10 | True | True |
+| full_seed2_vs_untrained_seed2 | 16 | 0.0001 | 9/16 | 1.1e-07 | True | True |
+| full_seed3_vs_untrained_seed3 | 16 | 0.0031 | 3/16 | 0.074 | True | False |
+| full_seed4_vs_untrained_seed4 | 16 | 0.0022 | 7/16 | 2.6e-05 | True | True |
+| full_seed5_vs_untrained_seed5 | 16 | 0.0001 | 13/16 | 1e-13 | True | True |
+| full_seed6_vs_untrained_seed6 | 16 | 0.0001 | 16/16 | 5.4e-20 | True | True |
+| full_seed7_vs_untrained_seed7 | 16 | 0.0001 | 16/16 | 5.4e-20 | True | True |
+| full_seed8_vs_untrained_seed8 | 16 | 0.0001 | 8/16 | 1.9e-06 | True | True |
+| full_seed9_vs_untrained_seed9 | 16 | 0.0001 | 16/16 | 5.4e-20 | True | True |
 
 ## Backend: fake_fez (m = 16, shots = 1000)
 
