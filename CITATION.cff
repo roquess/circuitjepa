@@ -8,6 +8,7 @@ authors:
 version: 1.0.0
 date-released: 2026-11-15
 license: Apache-2.0
+doi: 10.5281/zenodo.24259038
 repository-code: "https://github.com/roquess/circuitjepa"
 keywords:
   - quantum machine learning

@@ -1,5 +1,7 @@
 # CircuitJEPA
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.24259038.svg)](https://doi.org/10.5281/zenodo.24259038)
+
 CircuitJEPA is a Joint-Embedding Predictive Architecture (JEPA) whose three
 parametrized components - encoder, exponential-moving-average (EMA) target
 encoder and horizon-conditioned predictor - are parametrized quantum circuits.
@@ -179,11 +181,15 @@ above 240 s unless `--force` is given.
 
 ## Citation
 
+Archived on Zenodo: [10.5281/zenodo.24259038](https://doi.org/10.5281/zenodo.24259038) (concept DOI, always resolves to the latest version; v1.0.0 is [10.5281/zenodo.24259039](https://doi.org/10.5281/zenodo.24259039)).
+
 ```bibtex
 @misc{roques2026circuitjepa,
   author       = {Roques, Steve},
   title        = {{CircuitJEPA}: a fully circuit-based Joint-Embedding Predictive Architecture for quantum dynamics},
   year         = {2026},
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.24259038},
   howpublished = {\url{https://github.com/roquess/circuitjepa}}
 }
 ```
