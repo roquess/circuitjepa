@@ -135,9 +135,9 @@ Device noise changes top-1 and gap by less than the seed spread (for seed 0 the 
 * **Noise.** The small effect of noise on top-1 and gap is measured (one seed on the QPU); its explanation is a hypothesis. Calibration values are context only and refer to the first circuit's layout. No error mitigation was used.
 * **Tomography cost.** A $k$-qubit latent needs $3^k$ bases and $4^k - 1$ expectation values, exponential in the latent size.
 
-# Next steps
+# Conclusion
 
-Planned work, with no predicted outcome: a short SPSA fine-tuning of the simulation-trained parameters on IBM hardware within the free-tier budget, and replacing tomography with classical shadows [@huang2020shadows].
+I built CircuitJEPA, a JEPA implemented entirely with parametrized circuits: a quantum encoder with ancillas, an EMA target encoder, and an action-conditioned quantum predictor, trained with a Bloch-vector cosine loss in simulation on Trotterized transverse-field Ising dynamics. Executed on `ibm_marrakesh`, the pre-registered seed-0 model, which is also the best of three seeds, retrieved 15 of 16 targets and met the pre-registered criterion against an untrained baseline (sign-flip p = 1.0 × 10^-4^, binomial p = 1.3 × 10^-17^). These results come with clear caveats. Retrieval varies strongly across seeds, removing the EMA and the stop-gradient did not cause collapse, and the dynamics probe does not show that the predictor learns dynamics. Training was done only in simulation, at a scale that is classically simulable. Taken together, this is a feasibility demonstration at 5 qubits: the JEPA training principle can be expressed with circuits throughout, and the trained circuits kept their retrieval behaviour on one QPU for one seed. It is not evidence of quantum advantage, generality or scalability. The planned next steps are a short SPSA fine-tuning of the simulation-trained parameters on IBM hardware within the free-tier budget, and replacing tomography with classical shadows [@huang2020shadows]; I make no prediction about their outcome.
 
 # References {-}
 

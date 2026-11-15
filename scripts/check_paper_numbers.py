@@ -342,6 +342,15 @@ add(f"Python 3.12.10, Qiskit 2.6.2, Qiskit Aer 0.18.2, qiskit-ibm-runtime 0.52.1
     "ENVIRONMENT.json")
 add("`qiskit-ibm-runtime` 0.52.1", f"`qiskit-ibm-runtime` {pk['qiskit-ibm-runtime']}", "ENVIRONMENT.json")
 
+# conclusion
+add("retrieved 15 of 16 targets and met the pre-registered criterion",
+    f"retrieved {QT['top1_hits']} of {QT['m']} targets and "
+    + ("met" if QT["pass_gap"] and QT["pass_top1"] else "?") + " the pre-registered criterion", "eval/qpu.json tests")
+add("(sign-flip p = 1.0 × 10^-4^, binomial p = 1.3 × 10^-17^). These",
+    f"(sign-flip p = {sci(QT['signflip_p_gap'])}, binomial p = {sci(QT['top1_binom_p'])}). These", "eval/qpu.json tests (conclusion)")
+add("the best of three seeds", "the best of three seeds"
+    if max(range(3), key=lambda s_: R("exact", f"full_seed{s_}", "top1")) == 0 else "?", "eval/exact.json full_seed*.top1")
+
 # ---------------------------------------------------------------- run checks
 bad = 0
 for text, value, src in claims:
