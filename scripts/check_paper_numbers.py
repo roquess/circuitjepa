@@ -141,8 +141,8 @@ add("(0.214 ± 0.140, fail)", f"({tuning(4, 'full')}, fail)", "tuning/attempt4/e
 add("exact top-1 of 0.500 ± 0.204, against 0.245 ± 0.157",
     f"exact top-1 of {tuning(1, 'no_predictor')}, against {tuning(1, 'full')}", "tuning/attempt1/exact.json")
 cfg = RUN["full_seed0"]["config"]
-for att, txt in ((2, "attempt 2 used $\\tau = {tau}$ and {epochs} epochs"),
-                 (4, "attempt 4 used learning rate {lr} and batch size {batch_size}")):
+for att, txt in ((2, "$\\tau = {tau}$ and {epochs} epochs"),
+                 (4, "learning rate {lr} with batch size {batch_size}")):
     c2 = load(f"tuning/attempt{att}/runs/full_seed0.json")["config"]
     add(txt.format(tau=0.996, epochs=200, lr=0.05, batch_size=16), txt.format(**c2), f"tuning/attempt{att}/runs/full_seed0.json config")
 c3 = load("tuning/attempt1/runs/full_seed0.json")["config"]
@@ -228,7 +228,7 @@ add("15 of 16 targets on the QPU, as on the simulators, against 1 of 16",
 QT = EVAL["qpu"]["tests"]["full_seed0_vs_untrained_seed0"]
 assert QT["pre_registered"] and QT["pass_gap"] and QT["pass_top1"] and QT["m"] == 16 and QT["top1_hits"] == 15
 add("The diagonal-gap test gives p = 1.0 × 10^-4^", f"The diagonal-gap test gives p = {sci(QT['signflip_p_gap'])}", "eval/qpu.json tests")
-add("The binomial top-1 test gives p = 1.3 × 10^-17^", f"The binomial top-1 test gives p = {sci(QT['top1_binom_p'])}", "eval/qpu.json tests")
+add("the binomial top-1 test gives p = 1.3 × 10^-17^", f"the binomial top-1 test gives p = {sci(QT['top1_binom_p'])}", "eval/qpu.json tests")
 add("(sign-flip p = 1.0 × 10^-4^, binomial p = 1.3 × 10^-17^)", f"(sign-flip p = {sci(QT['signflip_p_gap'])}, binomial p = {sci(QT['top1_binom_p'])})", "eval/qpu.json tests (abstract)")
 add("$1/10{,}001 \\approx 1.0 \\times 10^{-4}$", "$1/10{,}001 \\approx " + f"{1/10001:.1e}".replace("e-04", " \\times 10^{-4}") + "$", "metrics.signflip_p, n_resamples=10000")
 assert abs(QT["signflip_p_gap"] - 1 / 10001) < 1e-15
@@ -283,7 +283,6 @@ add("median CZ error on the four couplers of this chain is 0.00176", f"median CZ
 add("`last_update_date` is 2026-11-13 18:22:56+01:00", f"`last_update_date` is {CAL['last_update_date']}", "calibration last_update_date")
 lag = datetime.fromisoformat(JOBS[0]["submitted_at"]) - datetime.fromisoformat(CAL["last_update_date"])
 add("about 41 hours before the first job", f"about {round(lag.total_seconds() / 3600)} hours before the first job", "jobs.json vs calibration date")
-add("overall `last_update_date` is 41 hours before", f"overall `last_update_date` is {round(lag.total_seconds() / 3600)} hours before", "jobs.json vs calibration date")
 # dates of the individual quoted values (T1, T2, readout on the layout qubits; cz on the chain)
 val_dates = [datetime.fromisoformat(p["date"]) for q in layout for p in CAL["qubits"][q]
              if p["name"] in ("T1", "T2", "readout_error")]
@@ -292,7 +291,7 @@ val_dates += [datetime.fromisoformat(p["date"]) for g in CAL["gates"]
               for p in g["parameters"] if p["name"] == "gate_error"]
 t_first = datetime.fromisoformat(JOBS[0]["submitted_at"])
 lo, hi = (t_first - max(val_dates)).total_seconds() / 3600, (t_first - min(val_dates)).total_seconds() / 3600
-for txt in ("carry dates between {} and {} hours before the first job", "were measured {} to {} hours before the runs"):
+for txt in ("carry dates between {} and {} hours before the first job",):
     add(txt.format(54, 57), txt.format(int(np.floor(lo)), int(np.ceil(hi))), "calibration per-parameter dates vs jobs.json")
 # snapshot retrieval time: commit that added the file (file mtime is not preserved by git)
 import subprocess  # noqa: E402
@@ -309,7 +308,7 @@ add("at about 10:13 UTC", f"at about {t_cal.astimezone(t_first.tzinfo):%H:%M} UT
 # pre-registration commit contains the criterion and precedes the first results commit
 show = subprocess.run(["git", "show", "41d5c8b"], cwd=ROOT, capture_output=True, text=True).stdout
 assert "ALPHA_GAP = 0.01" in show and "ALPHA_TOP1 = 0.05" in show and 'pre_registered": seed == "0"' in show
-add("(commit `41d5c8b`)", "(commit `41d5c8b`)", "git show 41d5c8b")
+add("commit `41d5c8b`", "commit `41d5c8b`", "git show 41d5c8b")
 # 41d5c8b must be an ancestor of, and earlier than, the first results commit 29060b3
 anc = subprocess.run(["git", "merge-base", "--is-ancestor", "41d5c8b", "29060b3"], cwd=ROOT).returncode
 ct = lambda c: int(subprocess.run(["git", "show", "-s", "--format=%ct", c], cwd=ROOT, capture_output=True, text=True).stdout)
