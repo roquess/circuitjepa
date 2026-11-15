@@ -61,3 +61,18 @@ def test_gradients_flow():
     for g in (theta.grad, phi.grad):
         assert torch.isfinite(g).all()
         assert g.abs().sum() > 0
+
+
+def test_template_structure_counts():
+    """Trotter steps and predictor repetitions per circuit kind (encoder: 3 layers x 4 CZ = 12)."""
+    from circuitjepa.model import template
+
+    for t0 in range(4):
+        for s in (1, 2, 3):
+            ctx = template("context", t0, s, 0.5).count_ops()
+            tgt = template("target", t0, s, 0.5).count_ops()
+            una = template("unadvanced", t0, s, 0.5).count_ops()
+            assert ctx.get("rzz", 0) == 2 * t0 and ctx["cz"] == 12 + 2 * s  # predictor applied s times
+            assert tgt.get("rzz", 0) == 2 * (t0 + s) and tgt["cz"] == 12  # no predictor on the target
+            assert una.get("rzz", 0) == 2 * t0 and una["cz"] == 12
+            assert template("context", t0, s, 0.5, use_predictor=False).count_ops()["cz"] == 12

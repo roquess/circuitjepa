@@ -209,3 +209,55 @@ def test_hw_fetch_uses_only_latest_submission(hw, capsys):
     capsys.readouterr()
     assert cli.main(["hw-fetch", "--submission", "older"]) != 0  # no untrained job in it
     assert "incomplete" in capsys.readouterr().out
+
+
+def test_hw_fetch_refuses_to_overwrite_counts_of_another_job(hw, capsys):
+    results, _, _ = hw
+    assert cli.main(["hw-fetch"]) == 0
+    path = results / "hardware" / "counts_full_seed0.json"
+    raw = json.loads(path.read_text())
+    raw["job_id"] = "some-other-job"
+    path.write_text(json.dumps(raw))
+    capsys.readouterr()
+    assert cli.main(["hw-fetch"]) != 0
+    assert "not overwritten" in capsys.readouterr().out
+    assert json.loads(path.read_text())["job_id"] == "some-other-job"
+    assert cli.main(["hw-fetch", "--force"]) == 0
+    assert json.loads(path.read_text())["job_id"] != "some-other-job"
+
+
+@pytest.mark.parametrize("status", ["ERROR", "CANCELLED"])
+def test_hw_fetch_reports_failed_jobs(hw, capsys, monkeypatch, status):
+    import circuitjepa.hardware as hwmod
+
+    monkeypatch.setattr(cli, "_job_status", lambda job_id: status)
+    monkeypatch.setattr(hwmod, "job_error", lambda job_id: "boom")
+    assert cli.main(["hw-fetch"]) == 6
+    out = capsys.readouterr().out
+    assert f"{status}: boom" in out and "without results" in out
+
+
+# ---------------------------------------------------------------- guards and errors
+
+
+@pytest.mark.parametrize("backend", ["ibm_marrakesh", "ibm_fez", "qpu"])
+def test_evaluate_refuses_real_backends(tmp_path, monkeypatch, capsys, backend):
+    monkeypatch.setenv("CIRCUITJEPA_RESULTS", str(tmp_path / "results"))
+
+    def boom(*a, **k):
+        raise AssertionError("must not open a backend")
+
+    monkeypatch.setattr(ex, "evaluate_shots", boom)
+    assert cli.main(["evaluate", "--backend", backend]) == 2
+    assert "hw-submit" in capsys.readouterr().err
+
+
+def test_unknown_run_name_is_a_clean_error(tmp_path, monkeypatch, capsys):
+    monkeypatch.setenv("CIRCUITJEPA_RESULTS", str(tmp_path / "results"))
+    rc = cli.main(["hw-submit", "--backend", "fake_fez", "--runs", "nosuch_seed0", "--dry-run"])
+    assert rc == 1
+    assert "unknown run(s): nosuch_seed0" in capsys.readouterr().err
+
+
+def test_train_config_default_is_final_configuration():
+    assert TrainConfig("full", 0).delta == 0.5

@@ -52,6 +52,14 @@ def cmd_train_all(args) -> int:
 
 
 def cmd_evaluate(args) -> int:
+    if not (args.backend == "exact" or _is_simulated(args.backend)):
+        print(
+            f"Refusing to evaluate on {args.backend!r}: `evaluate` only runs local simulators "
+            "(exact, aer, fake_<name>). Real IBM backends spend QPU time; use `circuitjepa hw-submit` "
+            "(budget guard, dry run, job ids) and then `circuitjepa hw-fetch`.",
+            file=sys.stderr,
+        )
+        return 2
     runs = ex.load_runs()
     if not runs:
         print("no runs found under results/runs", file=sys.stderr)
@@ -149,6 +157,9 @@ class FetchRefused(Exception):
     pass
 
 
+FAILED_STATES = ("ERROR", "CANCELLED")
+
+
 def _job_status(job_id: str) -> str:
     from circuitjepa.hardware import job_status
 
@@ -192,6 +203,18 @@ def _submission_records(submission_id: str | None) -> tuple[str, dict[str, dict]
     return submission_id, by_tag
 
 
+def _check_overwrite(tag: str, rec: dict, force: bool) -> None:
+    """Refuse to replace raw counts saved from a different job unless forced."""
+    path = ex.results_dir() / "hardware" / f"counts_{tag}.json"
+    if path.exists() and not force:
+        old = json.loads(path.read_text(encoding="utf-8")).get("job_id")
+        if old != rec["job_id"]:
+            raise FetchRefused(
+                f"{path} holds counts of job {old}, not {rec['job_id']}; it is not overwritten. "
+                "Move it away or re-run with --force."
+            )
+
+
 def _save_raw(tag: str, rec: dict, counts: list[dict], submission_id: str) -> None:
     m = rec["m"]
     index = ex.circuit_index(m)
@@ -221,12 +244,26 @@ def cmd_hw_fetch(args) -> int:
         print(f"Refusing to fetch: {exc}")
         return 1
     print(f"submission: {submission_id}")
-    pending = []
+    try:
+        for tag, rec in recs.items():
+            _check_overwrite(tag, rec, args.force)
+    except FetchRefused as exc:
+        print(f"Refusing to fetch: {exc}")
+        return 1
+    pending, failed = [], []
     for tag, rec in recs.items():
         status = _job_status(rec["job_id"])
         print(f"{tag}: job {rec['job_id']} {status}")
-        if status != "DONE":
+        if status in FAILED_STATES:
+            failed.append(tag)
+            from circuitjepa.hardware import job_error
+
+            print(f"  {status}: {job_error(rec['job_id'])}")
+        elif status != "DONE":
             pending.append(tag)
+    if failed:
+        print(f"job(s) ended without results: {', '.join(failed)}; nothing was evaluated")
+        return 6
     if pending:
         print(f"not finished yet: {', '.join(pending)}; try again later")
         return 3
@@ -298,7 +335,8 @@ def build_parser() -> argparse.ArgumentParser:
     p.set_defaults(func=cmd_train_all)
 
     p = sub.add_parser("evaluate", help="evaluate all runs on a backend")
-    p.add_argument("--backend", required=True, help="exact, aer or fake_<name> (e.g. fake_fez)")
+    p.add_argument("--backend", required=True,
+                   help="exact, aer or fake_<name> (e.g. fake_fez); real backends: use hw-submit")
     p.add_argument("--m", type=int, default=16, help="test samples for shot-based backends")
     p.add_argument("--shots", type=int, default=1000)
     p.add_argument("--jobs", type=int, default=1, help="parallel processes over runs")
@@ -315,6 +353,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     p = sub.add_parser("hw-fetch", help="fetch finished hardware jobs and evaluate")
     p.add_argument("--submission", help="submission id (default: the most recent one)")
+    p.add_argument("--force", action="store_true", help="overwrite counts saved from a different job")
     p.set_defaults(func=cmd_hw_fetch)
 
     p = sub.add_parser("figures", help="render figures from results/")
@@ -327,7 +366,11 @@ def build_parser() -> argparse.ArgumentParser:
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except (FileNotFoundError, RuntimeError) as exc:  # unknown run names, missing IBM credentials
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

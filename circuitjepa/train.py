@@ -25,7 +25,7 @@ class TrainConfig:
     n_test: int = 64
     train_data_seed: int = 1234
     test_data_seed: int = 5678
-    delta: float = 0.25
+    delta: float = 0.5  # final configuration (tuning attempt 3; attempt 1 used 0.25)
     t0_max: int = 3
     epochs: int = 150
     batch_size: int = 32

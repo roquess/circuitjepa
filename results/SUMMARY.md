@@ -31,11 +31,11 @@ Per time step s:
 | untrained | 2 | 0.009 ± 0.018 | 0.0785 ± 0.0158 | 0.0995 ± 0.0290 |
 | untrained | 3 | 0.004 ± 0.014 | 0.0780 ± 0.0172 | 0.0810 ± 0.0210 |
 
-Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). Only the seed-0 pair is pre-registered; the others are exploratory.
+Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). The criterion was pre-registered for the seed-0 pair on the QPU only; all other tests are exploratory. p = 0.0001 is the floor of 10,000 sign-flip resamples.
 
 | pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
 |---|---|---|---|---|---|---|
-| full_seed0_vs_untrained_seed0 (registered) | 64 | 0.0001 | 59/64 | 1.9e-100 | True | True |
+| full_seed0_vs_untrained_seed0 | 64 | 0.0001 | 59/64 | 1.9e-100 | True | True |
 | full_seed1_vs_untrained_seed1 | 64 | 0.0001 | 21/64 | 2.5e-22 | True | True |
 | full_seed2_vs_untrained_seed2 | 64 | 0.0001 | 10/64 | 6.1e-08 | True | True |
 | full_seed3_vs_untrained_seed3 | 64 | 0.0001 | 5/64 | 0.0033 | True | True |
@@ -72,11 +72,11 @@ Per time step s:
 | untrained | 2 | 0.020 ± 0.063 | 0.0519 ± 0.0166 | 0.0726 ± 0.0274 |
 | untrained | 3 | 0.067 ± 0.086 | 0.0925 ± 0.0149 | 0.1065 ± 0.0302 |
 
-Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). Only the seed-0 pair is pre-registered; the others are exploratory.
+Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). The criterion was pre-registered for the seed-0 pair on the QPU only; all other tests are exploratory. p = 0.0001 is the floor of 10,000 sign-flip resamples.
 
 | pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
 |---|---|---|---|---|---|---|
-| full_seed0_vs_untrained_seed0 (registered) | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
+| full_seed0_vs_untrained_seed0 | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
 | full_seed1_vs_untrained_seed1 | 16 | 0.0006 | 8/16 | 1.9e-06 | True | True |
 | full_seed2_vs_untrained_seed2 | 16 | 0.0004 | 6/16 | 0.00028 | True | True |
 | full_seed3_vs_untrained_seed3 | 16 | 0.0011 | 6/16 | 0.00028 | True | True |
@@ -113,11 +113,11 @@ Per time step s:
 | untrained | 2 | 0.020 ± 0.063 | 0.0480 ± 0.0148 | 0.0693 ± 0.0260 |
 | untrained | 3 | 0.067 ± 0.086 | 0.0892 ± 0.0146 | 0.1030 ± 0.0281 |
 
-Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). Only the seed-0 pair is pre-registered; the others are exploratory.
+Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). The criterion was pre-registered for the seed-0 pair on the QPU only; all other tests are exploratory. p = 0.0001 is the floor of 10,000 sign-flip resamples.
 
 | pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
 |---|---|---|---|---|---|---|
-| full_seed0_vs_untrained_seed0 (registered) | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
+| full_seed0_vs_untrained_seed0 | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
 | full_seed1_vs_untrained_seed1 | 16 | 0.0007 | 8/16 | 1.9e-06 | True | True |
 | full_seed2_vs_untrained_seed2 | 16 | 0.0004 | 7/16 | 2.6e-05 | True | True |
 | full_seed3_vs_untrained_seed3 | 16 | 0.0007 | 6/16 | 0.00028 | True | True |
@@ -154,11 +154,11 @@ Per time step s:
 | untrained | 2 | 0.020 ± 0.063 | 0.0503 ± 0.0159 | 0.0704 ± 0.0260 |
 | untrained | 3 | 0.067 ± 0.086 | 0.0904 ± 0.0147 | 0.1042 ± 0.0292 |
 
-Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). Only the seed-0 pair is pre-registered; the others are exploratory.
+Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). The criterion was pre-registered for the seed-0 pair on the QPU only; all other tests are exploratory. p = 0.0001 is the floor of 10,000 sign-flip resamples.
 
 | pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
 |---|---|---|---|---|---|---|
-| full_seed0_vs_untrained_seed0 (registered) | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
+| full_seed0_vs_untrained_seed0 | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
 | full_seed1_vs_untrained_seed1 | 16 | 0.0009 | 8/16 | 1.9e-06 | True | True |
 | full_seed2_vs_untrained_seed2 | 16 | 0.0004 | 8/16 | 1.9e-06 | True | True |
 | full_seed3_vs_untrained_seed3 | 16 | 0.001 | 6/16 | 0.00028 | True | True |
@@ -195,11 +195,11 @@ Per time step s:
 | untrained | 2 | 0.000 ± 0.000 | 0.0359 ± 0.0027 | 0.0740 ± 0.0155 |
 | untrained | 3 | 0.167 ± 0.000 | 0.0993 ± 0.0113 | 0.1267 ± 0.0073 |
 
-Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). Only the seed-0 pair is pre-registered; the others are exploratory.
+Tests (full vs untrained; gap: paired sign-flip, p < 0.01; top-1: binomial vs chance 1/m, p < 0.05). The criterion was pre-registered for the seed-0 pair on the QPU only; all other tests are exploratory. p = 0.0001 is the floor of 10,000 sign-flip resamples.
 
 | pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |
 |---|---|---|---|---|---|---|
-| full_seed0_vs_untrained_seed0 (registered) | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
+| full_seed0_vs_untrained_seed0 (pre-registered) | 16 | 0.0001 | 15/16 | 1.3e-17 | True | True |
 | full_seed1_vs_untrained_seed1 | 16 | 0.0005 | 10/16 | 5.1e-09 | True | True |
 | full_seed2_vs_untrained_seed0 | 16 | 0.0016 | 6/16 | 0.00028 | True | True |
 

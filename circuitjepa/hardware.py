@@ -75,10 +75,20 @@ def get_backend(name: str):
             raise ValueError(f"unknown fake backend: {name}")
         return AerSimulator.from_backend(cls())
     try:
-        return QiskitRuntimeService().backend(name)
+        return _service().backend(name)
+    except RuntimeError:
+        raise
+    except Exception as exc:
+        raise RuntimeError(f"Could not open IBM backend {name!r}: {exc}") from exc
+
+
+def _service() -> QiskitRuntimeService:
+    """IBM Runtime service from saved credentials, with a clear error when there are none."""
+    try:
+        return QiskitRuntimeService()
     except Exception as exc:
         raise RuntimeError(
-            f"Could not open IBM backend {name!r} ({exc}). Save credentials once with "
+            f"Could not connect to IBM Quantum ({exc}). Save credentials once with "
             "QiskitRuntimeService.save_account(token=..., channel='ibm_quantum_platform')."
         ) from exc
 
@@ -186,12 +196,20 @@ def submit(
 
 
 def fetch(job_id: str) -> list[dict[str, int]]:
-    return _counts(QiskitRuntimeService().job(job_id).result())
+    return _counts(_service().job(job_id).result())
 
 
 def job_status(job_id: str) -> str:
-    status = QiskitRuntimeService().job(job_id).status()
+    status = _service().job(job_id).status()
     return getattr(status, "name", str(status))
+
+
+def job_error(job_id: str) -> str:
+    """Error message of a failed job, or an empty string."""
+    try:
+        return str(_service().job(job_id).error_message() or "")
+    except Exception as exc:  # the message is informative only
+        return f"(error message unavailable: {exc})"
 
 
 def measure_embeddings(samples, run, kind: Kind, backend, shots: int) -> np.ndarray:

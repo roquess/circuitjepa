@@ -88,7 +88,14 @@ def _sim_rows(evals: dict) -> list[tuple[str, list[str | None], str]]:
     """(backend, run name per column, row label) for each row of the similarity figure."""
     rows = []
     for be in ex._sort_backends(evals):
-        rows.append((be, [f"{v}_seed0" for v in ex.VARIANTS], _backend_label(be, evals[be])))
+        # Exploratory QPU runs go to their own row, not next to the pre-registered pair.
+        names = [None if be == "qpu" and f"{v}_seed0" in QPU_EXTRA else f"{v}_seed0" for v in ex.VARIANTS]
+        label = _backend_label(be, evals[be])
+        shots = evals[be].get("shots")
+        if isinstance(shots, dict):  # QPU: shots of the runs actually shown in this row
+            sh = sorted({shots[n] for n in names if n and n in shots})
+            label = f"QPU {evals[be].get('backend_name', '')} (m={evals[be].get('m')}, {'/'.join(map(str, sh))} shots)"
+        rows.append((be, names, label))
     if "qpu" in evals and any(n in evals["qpu"]["runs"] for n in QPU_EXTRA):
         shots = evals["qpu"].get("shots", {})
         names = [n if n in evals["qpu"]["runs"] else None for n in QPU_EXTRA]
@@ -153,15 +160,14 @@ def ablation(summary: dict, evals: dict) -> Path:
             for i, be in enumerate(bes):
                 m = summary["backends"][be]["_meta"].get("m")
                 if m:
-                    ax.hlines(1 / m, i - 0.45, i + 0.45, colors=INK, linestyles="--", lw=1)
-            ax.text(x[-1] + 0.45, 1 / summary["backends"][bes[-1]]["_meta"]["m"], " chance 1/m",
-                    va="bottom", ha="right", fontsize=8, color=INK)
+                    ax.hlines(1 / m, i - 0.45, i + 0.45, colors=INK, linestyles="--", lw=1,
+                              label="chance 1/m" if i == 0 else None)
         ax.set_xticks(x, [_backend_label(be, evals[be]).split(" (")[0] for be in bes],
                       rotation=25, ha="right", rotation_mode="anchor")
         ax.set_title(title)
         ax.axhline(0, color="#888888", lw=0.8)
     handles, labels = axes[0].get_legend_handles_labels()
-    fig.legend(handles, labels, loc="lower center", ncol=len(ex.VARIANTS), bbox_to_anchor=(0.5, -0.02))
+    fig.legend(handles, labels, loc="lower center", ncol=len(labels), bbox_to_anchor=(0.5, -0.02))
     fig.suptitle("Ablation by backend (mean ± std over seeds)")
     fig.tight_layout(rect=(0, 0.08, 1, 1))
     path = _fig_dir() / "ablation.png"

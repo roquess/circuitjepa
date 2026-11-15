@@ -98,6 +98,12 @@ def load_runs(names: list[str] | None = None) -> dict[str, RunResult]:
         paths = sorted((results_dir() / "runs").glob("*.json"))
     else:
         paths = [run_path(n) for n in names]
+        missing = [p.stem for p in paths if not p.exists()]
+        if missing:
+            raise FileNotFoundError(
+                f"unknown run(s): {', '.join(missing)} (no {results_dir() / 'runs'}/<name>.json); "
+                "names look like full_seed0"
+            )
     return {p.stem: load_run(p) for p in paths}
 
 
@@ -215,8 +221,9 @@ def _metrics(run: RunResult, emb: dict, test: list[Sample], baseline_tv: float |
     return out
 
 
-def hypothesis_tests(per_run: dict) -> dict:
-    """Pre-registered tests: full vs untrained, paired by seed (seed 0 is the registered one)."""
+def hypothesis_tests(per_run: dict, backend: str = "qpu") -> dict:
+    """Tests full vs untrained, paired by seed. The criterion was pre-registered for the QPU
+    seed-0 pair only, so `pre_registered` is true only for that pair on the `qpu` backend."""
     tests = {}
     for name, rec in per_run.items():
         if not name.startswith("full_seed"):
@@ -237,7 +244,7 @@ def hypothesis_tests(per_run: dict) -> dict:
             "top1_binom_p": p_top1,
             "pass_gap": bool(p_gap < ALPHA_GAP),
             "pass_top1": bool(p_top1 < ALPHA_TOP1),
-            "pre_registered": seed == "0",
+            "pre_registered": seed == "0" and backend == "qpu",
         }
     return tests
 
@@ -265,7 +272,7 @@ def _assemble(backend: str, runs: dict[str, RunResult], embs: dict, tests_m: dic
         "date": _now(),
         "probe_note": "linear probe fitted on exact (noiseless) target embeddings of the training set",
         "runs": per_run,
-        "tests": hypothesis_tests(per_run),
+        "tests": hypothesis_tests(per_run, backend),
     }
 
 
@@ -302,17 +309,17 @@ def evaluate_shots(
 ) -> dict:
     embs, tests_m, wall, stats = {}, {}, {}, {}
     args = [(name, run, backend_name, m, shots) for name, run in runs.items()]
+    def collect(results) -> None:
+        for name, emb, st, w in results:
+            embs[name], stats[name], wall[name] = emb, st, w
+            tests_m[name] = first_test_samples(runs[name].config, m)
+            print(f"  {name}: {w:.1f} s", flush=True)
+
     if jobs <= 1:
-        results = (_shot_one(*a) for a in args)
+        collect(_shot_one(*a) for a in args)
     else:
-        pool = ProcessPoolExecutor(max_workers=jobs)
-        results = (f.result() for f in as_completed([pool.submit(_shot_one, *a) for a in args]))
-    for name, emb, st, w in results:
-        embs[name], stats[name], wall[name] = emb, st, w
-        tests_m[name] = first_test_samples(runs[name].config, m)
-        print(f"  {name}: {w:.1f} s", flush=True)
-    if jobs > 1:
-        pool.shutdown()
+        with ProcessPoolExecutor(max_workers=jobs) as pool:
+            collect(f.result() for f in as_completed([pool.submit(_shot_one, *a) for a in args]))
     embs = {n: embs[n] for n in runs}  # keep run order
     out = _assemble(backend_name, runs, embs, tests_m, {"wall": wall, "stats": stats})
     out["m"] = m
@@ -457,14 +464,15 @@ def summary_markdown(summary: dict) -> str:
             lines += [
                 "",
                 f"Tests (full vs untrained; gap: paired sign-flip, p < {ALPHA_GAP}; "
-                f"top-1: binomial vs chance 1/m, p < {ALPHA_TOP1}). Only the seed-0 pair is pre-registered; "
-                "the others are exploratory.",
+                f"top-1: binomial vs chance 1/m, p < {ALPHA_TOP1}). The criterion was pre-registered for the "
+                "seed-0 pair on the QPU only; all other tests are exploratory. p = 0.0001 is the floor of "
+                "10,000 sign-flip resamples.",
                 "",
                 "| pair | m | gap p | top-1 hits | top-1 p | pass gap | pass top-1 |",
                 "|---|---|---|---|---|---|---|",
             ]
             for pair, t in tests.items():
-                mark = " (registered)" if t["pre_registered"] else ""
+                mark = " (pre-registered)" if t["pre_registered"] else ""
                 lines.append(
                     f"| {pair}{mark} | {t['m']} | {t['signflip_p_gap']:.2g} | {t['top1_hits']}/{t['m']} | "
                     f"{t['top1_binom_p']:.2g} | {t['pass_gap']} | {t['pass_top1']} |"

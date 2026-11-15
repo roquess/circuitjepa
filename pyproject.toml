@@ -1,16 +1,18 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "circuitjepa"
 version = "0.1.0"
-description = "Quantum Joint-Embedding Predictive Architecture"
+description = "A fully circuit-based Joint-Embedding Predictive Architecture for quantum dynamics"
 readme = "README.md"
 requires-python = ">=3.12"
-license = { text = "Apache-2.0" }
+license = "Apache-2.0"
+license-files = ["LICENSE"]
+authors = [{ name = "Steve Roques" }]
 dependencies = [
-    "qiskit>=1.2",
+    "qiskit>=2.0",
     "qiskit-aer",
     "qiskit-ibm-runtime",
     "torch",
@@ -18,6 +20,9 @@ dependencies = [
     "scipy",
     "matplotlib",
 ]
+
+[project.urls]
+Repository = "https://github.com/roquess/circuitjepa"
 
 [project.optional-dependencies]
 dev = ["pytest"]

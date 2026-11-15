@@ -7,3 +7,9 @@ __pycache__/
 results/hardware/*.log
 .playwright-mcp/
 .wolf/
+build/
+dist/
+*.pyc
+.vscode/
+.idea/
+.DS_Store
